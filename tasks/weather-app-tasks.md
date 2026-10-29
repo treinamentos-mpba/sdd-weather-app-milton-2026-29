@@ -1104,6 +1104,23 @@ As decisões operacionais não bloqueiam desenvolver o MVP. Não escolher hosped
 
 Referências abaixo são os **IDs atuais**. Intervalos são inclusivos. Preencher nomes concretos de testes, procedimentos e resultados em T-98; não criar cobertura duplicada para cada referência.
 
+### Requisito funcional → tarefas
+
+As colunas separam implementação de evidência: uma tarefa de teste não substitui uma tarefa que implementa o requisito. Contratos T-01 a T-03 e validações compartilhadas T-09 dão suporte às tarefas indicadas, sem repetição em todas as linhas.
+
+| Requisito da spec | Tarefas que implementam o comportamento | Tarefas de verificação | Lacuna de planejamento |
+|---|---|---|---|
+| **RF-01 — Busca global e seleção de cidade** | T-18 (geocoding); T-24, T-27 a T-29 (estado, envio, concorrência e limites); T-30 (alvo selecionado); T-43, T-44 (formulário e resultados com contexto); T-53 (integração). | T-101 (mock de fetch); T-65 (fluxo desktop/mobile); T-59 (independência de fluxos). | Nenhuma. |
+| **RF-02 — Condições atuais, unidades e aviso de estimativas** | T-08, T-10, T-12 (WMO, normalização e parcial); T-19 (forecast); T-30 (consulta); T-46 (atuais); T-49 (aviso e atribuição); T-54 (integração). | T-102 (service); T-65, T-68 (dados completos); T-69 (parciais e falha total). | Nenhuma. |
+| **RF-03 — Cinco dias no fuso local e período anterior** | T-05, T-11, T-12 (calendário, séries e período confiável); T-19 (dados diários); T-34 (mudança de dia sem polling); T-47, T-48 (cartões e seções); T-49 (estimativas); T-54, T-55 (integração e atualização do período). | T-102 (service); T-68 (cinco dias, DST e virada de ano); T-69 (lacunas/fuso/âncora); T-75 (meia-noite sem fetch). | Nenhuma. |
+| **RF-04 — Celsius inicial e alternância de todas as temperaturas** | T-04 (conversão e arredondamento); T-26, T-36, T-37 (unidade inicial/restaurada e escolha vigente); T-38 (Celsius após exclusão); T-46, T-47 (temperaturas e demais unidades); T-50, T-56 (seletor e integração). | T-100 (unitários); T-60 (unidade durante request); T-70 (conversão sem rede); T-72 (preferência restaurada). | Nenhuma. |
+| **RF-05 — Loading, vazio, parcial, falhas, timeout e recuperação** | T-12 a T-15 (utilidade, erros, deadline e Retry-After); T-18, T-19, T-23 (fronteiras de dados/localização); T-24, T-25, T-27 a T-33, T-35 (estados, retry manual, concorrência, bloqueios e snapshot); T-41, T-42 (falha de render); T-43, T-45, T-48 (feedback); T-53 a T-55, T-57 (integração). | T-101 a T-103 (services e componentes); T-66, T-67 (recuperação e limites); T-69 (parcial); T-71 (timeout de localização); T-74 (snapshot); T-78 (ausência de cache persistente); T-80, T-88, T-89 (acessibilidade dos estados). | Nenhuma. |
+| **RF-06 — Localização opcional com informação e ação explícita** | T-23 (API do navegador); T-35 (ação, intenção e prazos); T-51 (informação prévia e fallback manual); T-57 (integração). | T-71 (permissão concedida/indefinida, sucesso e falhas); T-78 (minimização de coordenadas). | Nenhuma. |
+| **RF-07 — Preferências locais mínimas, restauração e exclusão** | T-20 a T-22 (leitura, projeção e remoção próprias); T-26 (estado); T-36 a T-38 (confirmação, escolhas e exclusão sem recriação); T-52 (painel); T-58 (integração). | T-60 (request pendente); T-72, T-73 (visitas e exclusão); T-78 (sem coordenadas/cache/persistência em servidor). | Nenhuma. |
+| **RF-08 — Consulta, refresh, horários, atualidade e concorrência** | T-05 a T-07, T-10 a T-12 (datas, referência inequívoca e fuso inválido); T-19 (consulta); T-25, T-30 a T-35 (alvo vigente, refresh, relógio sem polling e localização); T-46, T-48 (conclusão/referência, UTC e avisos); T-53 a T-55, T-57 (ações integradas). | T-59 (busca independente); T-65 (seleção); T-69 (UTC/fuso inválido); T-71 (localização); T-74 (refresh, horário e respostas superadas); T-75 (60/61 min, referência desconhecida e ausência de polling). | Nenhuma. |
+
+**Resultado da conferência:** os oito requisitos funcionais da spec (RF-01 a RF-08) têm tarefas de implementação e de verificação correspondentes. Não foi identificado requisito funcional sem tarefa. Esta é cobertura do planejamento, não evidência de implementação ou aceite; todas as tarefas continuam pendentes.
+
 | Cobertura dedicada solicitada | Tarefa responsável |
 |---|---|
 | Unitários de conversão, arredondamento e alternâncias | T-100 |
