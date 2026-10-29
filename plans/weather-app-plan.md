@@ -601,7 +601,7 @@ Invariantes do reducer e dos efeitos:
 
 Guardar apenas temperaturas de origem em Celsius e a preferência `Unit`. Componentes usam um helper puro de `lib/temperature.ts` ao renderizar: Celsius mantém o valor; Fahrenheit deriva `C × 9 / 5 + 32`. Converter também sensação térmica e mínimas/máximas. `null` continua indisponível e zero continua válido.
 
-Arredondar somente após conversão: até uma casa decimal, empate afastado de zero e sem zero negativo, com formatação pt-BR. Não guardar `temperatureF`, strings formatadas ou arrays convertidos em estado; não converter de volta a partir do valor já arredondado. Assim alternâncias não acumulam erro. `useMemo` só se houver custo observado, não por padrão.
+Arredondar somente após conversão: até uma casa decimal, empate afastado de zero e sem zero negativo, com formatação pt-BR. O helper `unitLabel(unit)` retorna `°C` ou `°F` e é reutilizado por `formatTemperature`; os testes ficam em `tests/unit/temperature.test.ts`. Não guardar `temperatureF`, strings formatadas ou arrays convertidos em estado; não converter de volta a partir do valor já arredondado. Assim alternâncias não acumulam erro. `useMemo` só se houver custo observado, não por padrão.
 
 Selecionar unidade altera apresentação e preferência local, sem fetch, mudança de status da consulta, reinício de timeout ou alteração dos horários. Durante carregamento, a resposta aceita será renderizada na unidade vigente naquele momento, não na unidade capturada no início da chamada. Vento, umidade, precipitação e pressão ao nível do mar não mudam. Referências: CA-04.1 a CA-04.4, EC-21/EC-30/EC-34/EC-44.
 

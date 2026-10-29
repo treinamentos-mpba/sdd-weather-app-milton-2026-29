@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { convertTemperature, formatTemperature } from '../../src/lib/temperature';
+import { convertTemperature, formatTemperature, unitLabel } from '../../src/lib/temperature';
 
 describe('temperature', () => {
   it.each([
@@ -10,6 +10,10 @@ describe('temperature', () => {
     expect(convertTemperature(celsius, 'fahrenheit')).toBe(fahrenheit);
   });
 
+  it.each([0, 100, -40, 12.34])('preserva %s °C na unidade Celsius', (celsius) => {
+    expect(convertTemperature(celsius, 'celsius')).toBe(celsius);
+  });
+
   it.each([
     [-1.25, '-1,3 °C'],
     [1.25, '1,3 °C'],
@@ -18,6 +22,21 @@ describe('temperature', () => {
     [null, 'Sem dados'],
   ])('formata %s sem perder zero ou exibir zero negativo', (value, expected) => {
     expect(formatTemperature(value, 'celsius')).toBe(expected);
+  });
+
+  it.each([
+    [0, '32 °F'],
+    [100, '212 °F'],
+    [-40, '-40 °F'],
+    [12.34, '54,2 °F'],
+    [null, 'Sem dados'],
+  ])('formata %s °C em Fahrenheit com arredondamento e símbolo', (value, expected) => {
+    expect(formatTemperature(value, 'fahrenheit')).toBe(expected);
+  });
+
+  it('identifica os símbolos de ambas as unidades', () => {
+    expect(unitLabel('celsius')).toBe('°C');
+    expect(unitLabel('fahrenheit')).toBe('°F');
   });
 
   it('deriva alternâncias da origem sem acumular arredondamento', () => {

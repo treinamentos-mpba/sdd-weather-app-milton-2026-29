@@ -119,10 +119,10 @@ Cada ID aparece em uma única fatia; tarefas de fatias anteriores são reutiliza
 
 - **ID:** T-04
 - **Tipo:** Data
-- **Descrição:** Derivar apresentação pt-BR a partir de Celsius sem estado adicional.
+- **Descrição:** Derivar apresentação pt-BR a partir de Celsius sem estado adicional; centralizar os símbolos °C/°F em `unitLabel(unit)`, reutilizado na formatação.
 - **Critérios de aceite:** Vitest compara 0 °C → 32 °F, 100 °C → 212 °F e −40 °C → −40 °F; `null` continua indisponível. De 12,34 °C, dez alternâncias terminando em Celsius mostram 12,3 °C e em Fahrenheit mostram 54,2 °F. Em Celsius, −1,25/1,25/−0,04 resultam em −1,3/1,3/0, respectivamente, com vírgula pt-BR, até uma decimal e sem −0.
 - **Dependências:** T-01.
-- **Arquivos prováveis:** `src/lib/temperature.ts`, `tests/unit/units.test.ts`.
+- **Arquivos prováveis:** `src/lib/temperature.ts`, `tests/unit/temperature.test.ts`.
 - **Rastreabilidade:** CA-04.1 a CA-04.4; EC-21, EC-34; RNF-05.
 
 ### T-05 — Operar datas de calendário local
@@ -718,10 +718,10 @@ As tarefas T-100 a T-103 são dedicadas exclusivamente a testes, sem mudanças e
 
 - **ID:** T-100
 - **Tipo:** Test
-- **Descrição:** Consolidar a suíte unitária da conversão e do arredondamento.
-- **Critérios de aceite:** `pnpm exec vitest run tests/unit/units.test.ts` encerra com código 0, sem casos ignorados. Assertions com resultados literais verificam 0 → 32, 100 → 212, −40 → −40, `null` indisponível e zero válido; 12,34 °C permanece 12,3 °C após dez alternâncias e equivale a 54,2 °F. Em Celsius, −1,25/1,25/−0,04 resultam em −1,3/1,3/0, sem zero negativo. Testar a função real, sem mockar conversão, rede ou componentes.
+- **Descrição:** Consolidar a suíte unitária da conversão, do arredondamento e dos símbolos de unidade.
+- **Critérios de aceite:** `pnpm exec vitest run tests/unit/temperature.test.ts` encerra com código 0, sem casos ignorados. Assertions com resultados literais verificam 0 → 32, 100 → 212, −40 → −40, Celsius preservado, `unitLabel` em ambas as unidades, `null` indisponível e zero válido; 12,34 °C permanece 12,3 °C após dez alternâncias e equivale a 54,2 °F. Em Celsius, −1,25/1,25/−0,04 resultam em −1,3/1,3/0, sem zero negativo. Testar a função real, sem mockar conversão, rede ou componentes.
 - **Dependências:** T-04.
-- **Arquivos prováveis:** `tests/unit/units.test.ts`.
+- **Arquivos prováveis:** `tests/unit/temperature.test.ts`.
 - **Rastreabilidade:** CA-04.1 a CA-04.4; EC-21, EC-34; RNF-05.
 
 ### T-101 — Testar geocoding com mock de fetch
