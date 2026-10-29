@@ -74,15 +74,10 @@ A empresa precisa de uma aplicação para que usuários consultem o clima de cid
 19. **Como o produto deve se sustentar e há restrições de custo, publicidade ou uso comercial dos dados do provedor?** Impacto: limites de uso, atribuição exigida ou custos podem inviabilizar a solução ou exigir mudanças de provedor e interface.
 20. **Quem é responsável por operação, monitoramento e resposta a incidentes, e qual tempo de recuperação é aceitável?** Impacto: uma meta de disponibilidade sem responsáveis, alertas e procedimento de recuperação não assegura que o serviço volte a funcionar após uma falha.
 
-## Suposições
+## Decisões
 
-**Decisões adotadas para destravar a especificação deste treinamento**
-
-- Fonte de dados: **Open-Meteo**, sem necessidade de chave de API.
-- Interpretação de “previsão de cinco dias”: **hoje e os quatro dias seguintes**.
-- Unidade padrão de temperatura: **Celsius**; o usuário pode alternar para Fahrenheit.
-- Não haverá autenticação nem persistência de dados em servidor.
-- Idioma da interface: **pt-BR**.
-- O acesso será feito por uma interface web responsiva; o briefing não exige aplicativo nativo.
-
-Essas decisões são premissas de trabalho para a próxima etapa e devem ser confirmadas antes de tratar a especificação como definitiva.
+- **Fonte de dados: Open-Meteo, sem API key.** Justificativa: permite consultar geocodificação e previsão sem exigir credenciais de API para o escopo definido. Resolve a escolha inicial do provedor (pergunta 14); limites, disponibilidade, atribuição e condições de uso ainda precisam ser avaliados.
+- **“Cinco dias” significa hoje e os quatro dias seguintes.** Justificativa: fixa um intervalo de previsão consistente com o requisito de cinco dias. Resolve a ambiguidade do período (pergunta 4); o fuso horário usado para determinar a virada do dia ainda precisa ser definido.
+- **Unidade padrão de temperatura: Celsius.** Justificativa: oferece um padrão explícito para a interface em pt-BR. Resolve a unidade inicial, mas outras unidades meteorológicas e a persistência da preferência continuam em aberto (pergunta 11).
+- **Sem autenticação e sem persistência de dados no servidor.** Justificativa: mantém o escopo simples e evita contas e armazenamento de perfil nesta versão. Resolve a necessidade de autenticação e persistência de servidor, mas não define armazenamento local, analytics, logs ou retenção de dados operacionais (perguntas 12 e 18).
+- **Idioma da interface: pt-BR.** Justificativa: define o idioma inicial de conteúdo e interação. Resolve o idioma da primeira versão; cobertura geográfica, convenções regionais e suporte a outros idiomas permanecem em aberto (pergunta 7).
