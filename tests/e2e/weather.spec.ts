@@ -1,9 +1,7 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import { forecastResponse } from '../fixtures/forecast';
 
-test('busca cidade, apresenta cinco dias e converte a temperatura sem nova consulta', async ({
-  page,
-}) => {
+async function expectWeatherFlow(page: Page) {
   let geocodingRequests = 0;
   let forecastRequests = 0;
   const forecast = forecastResponse();
@@ -53,4 +51,41 @@ test('busca cidade, apresenta cinco dias e converte a temperatura sem nova consu
   await expect(current.getByText(/°C/)).toHaveCount(0);
   expect(geocodingRequests).toBe(1);
   expect(forecastRequests).toBe(1);
+}
+
+test('busca cidade, apresenta cinco dias e converte a temperatura sem nova consulta', async ({
+  page,
+}) => {
+  await expectWeatherFlow(page);
+});
+
+test('mostra estado vazio quando o geocoding não retorna results', async ({ page }) => {
+  let forecastRequests = 0;
+  await page.route('https://geocoding-api.open-meteo.com/**', async (route) => {
+    await route.fulfill({ json: {} });
+  });
+  await page.route('https://api.open-meteo.com/**', async (route) => {
+    forecastRequests++;
+    await route.fulfill({ json: forecastResponse() });
+  });
+
+  await page.goto('/');
+  await page.getByRole('textbox', { name: 'Nome da cidade' }).fill('Cidade inexistente');
+  await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+
+  await expect(page.getByRole('status')).toContainText('Nenhuma cidade encontrada');
+  await expect(page.getByRole('region', { name: 'Escolha uma cidade' })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Previsão de 5 dias' })).toHaveCount(0);
+  expect(forecastRequests).toBe(0);
+});
+
+test.describe('mobile 375×812', () => {
+  test.use({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
+
+  test('renderiza clima e previsão durante o fluxo principal', async ({ page }) => {
+    await expectWeatherFlow(page);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+  });
 });
