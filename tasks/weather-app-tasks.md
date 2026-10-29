@@ -20,6 +20,15 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - Não liberar incrementos intermediários sem as proteções dependentes. Sem retry automático, polling meteorológico, cache persistente, backend ou funcionalidades fora da spec.
 - Evidências incluem tarefa, CA/EC/RNF, resultado, comando/procedimento, ambiente e limitações. Falha, skip ou ambiente indisponível deixa pendência. Correção descoberta em tarefa Test não autoriza editar UI/dados nessa mesma tarefa: abrir unidade corretiva com os mesmos limites e repetir a evidência afetada.
 
+### Protocolo de aceite aplicável às 99 tarefas
+
+- **Aprovação binária:** todas as condições da tarefa devem ser demonstradas. Casos separados por barra ou enumerados como alternativas exigem verificações separadas, não a escolha de apenas um. Existência de arquivo, teste ou script não é aprovação.
+- **Entrada → ação → saída:** cada teste/procedimento identifica a entrada controlada, executa a ação indicada e compara a saída com o resultado escrito no critério ou no CA/EC referenciado. “Cobrir” significa ter assertions do resultado, não apenas executar código. Não derivar o valor esperado chamando a própria função testada.
+- **Contratos:** `pnpm build` deve encerrar com código 0 e a inspeção das declarações deve confirmar os campos/invariantes enumerados. Compilação isolada não comprova semântica meteorológica nem efeitos ausentes.
+- **Automação:** registrar comando e casos executados com suas assertions aprovadas. Contadores comprovam “nenhuma chamada”/“sem retry”; comparar alvo, dados, mensagens, horários, preferências e loading antes/depois comprova descarte de resposta superada. Diagnósticos sanitizados contêm somente categoria, serviço e status permitido, nunca entrada ou objeto bruto.
+- **Inspeção manual/documental:** registrar passos, resultado observado e evidência por item. Para WCAG, informar ID do critério, medição/observação e justificativa de não aplicabilidade quando houver; “parece acessível” não é resultado. Decisão operacional requer aprovação identificada do responsável, não somente um campo preenchido.
+- **Rastreabilidade:** o campo de cada tarefa aponta os requisitos aplicáveis; escolhas técnicas adicionais são verificadas contra a seção correspondente do plano, sem criar requisito de produto novo. A matriz final indica o responsável integrado por CA/EC/RNF; T-98 registra as evidências concretas.
+
 ## Entrega 1 — Contratos e regras puras
 
 ### T-01 — Definir contratos meteorológicos
@@ -27,7 +36,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-01
 - **Tipo:** Data
 - **Descrição:** Declarar os modelos meteorológicos do plano.
-- **Critérios de aceite:** Build strict aceita `City`, `Unit`, `CurrentWeather`, `ForecastDay`, `WeatherData`, localização e preferências; temperaturas de origem em Celsius, ausências `null`, forecast readonly. Contratos não iniciam efeitos.
+- **Critérios de aceite:** `pnpm build` encerra com código 0; inspeção compara nomes/campos de `City`, `Unit`, `CurrentWeather`, `ForecastDay`, `WeatherData`, localização e preferências ao Data Model do plano, sem campo obrigatório ausente. `Unit` é `'celsius' | 'fahrenheit'`, temperaturas de origem têm sufixo `C`, ausências usam `null` e forecast é readonly. Arquivo exporta somente tipos, sem código de efeito.
 - **Dependências:** nenhuma.
 - **Arquivos prováveis:** `src/types/weather.ts`.
 - **Rastreabilidade:** RF-01 a RF-04, RF-06 a RF-08.
@@ -37,7 +46,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-02
 - **Tipo:** Data
 - **Descrição:** Declarar `Result`, `AppError`, serviços e contexto de requisição.
-- **Critérios de aceite:** Build strict verifica união discriminada, categoria `unexpected`, serviço, status e prazo opcionais. Não há campos para query, URL, coordenadas ou corpo externo em erros; sem classe de infraestrutura.
+- **Critérios de aceite:** `pnpm build` encerra com código 0. Inspeção confirma `Result<T>` com `ok/value` ou `ok/error`; `AppError` contém categoria (incluindo `unexpected`), serviço, `status: number | null` e `retryAtMs: EpochMs | null`, conforme Data Model do plano. Contexto contém signal/relógio; não há query, URL, coordenadas, corpo externo ou classe de infraestrutura.
 - **Dependências:** T-01.
 - **Arquivos prováveis:** `src/types/errors.ts`.
 - **Rastreabilidade:** RF-05; RNF-06.
@@ -47,7 +56,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-03
 - **Tipo:** Data
 - **Descrição:** Declarar estados representáveis de busca e consulta.
-- **Critérios de aceite:** Build strict aceita os estados do plano; `empty` exclusivo da busca, loading meteorológico distingue localização/forecast, snapshot tem alvo e bloqueios são separados por serviço.
+- **Critérios de aceite:** `pnpm build` encerra com código 0; inspeção compara as uniões ao State Management do plano: busca tem idle/loading/success/empty/error; clima não tem empty e loading distingue location/forecast. Variantes com snapshot têm alvo; `AppState` possui bloqueios distintos de geocoding/forecast. Nenhuma combinação usa flags para substituir os discriminantes definidos.
 - **Dependências:** T-01, T-02.
 - **Arquivos prováveis:** `src/types/state.ts`.
 - **Rastreabilidade:** RF-05, RF-08; EC-25, EC-26, EC-32.
@@ -57,7 +66,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-04
 - **Tipo:** Data
 - **Descrição:** Derivar apresentação pt-BR a partir de Celsius sem estado adicional.
-- **Critérios de aceite:** Vitest cobre 0 → 32, 100 → 212, −40 → −40, `null`, zero e dez alternâncias; 12,34 °C → 54,2 °F. Até uma decimal, empates afastados de zero e sem −0, incluindo −1,25/1,25/−0,04 °C.
+- **Critérios de aceite:** Vitest compara 0 °C → 32 °F, 100 °C → 212 °F e −40 °C → −40 °F; `null` continua indisponível. De 12,34 °C, dez alternâncias terminando em Celsius mostram 12,3 °C e em Fahrenheit mostram 54,2 °F. Em Celsius, −1,25/1,25/−0,04 resultam em −1,3/1,3/0, respectivamente, com vírgula pt-BR, até uma decimal e sem −0.
 - **Dependências:** T-01.
 - **Arquivos prováveis:** `src/lib/units.ts`, `tests/unit/units.test.ts`.
 - **Rastreabilidade:** CA-04.1 a CA-04.4; EC-21, EC-34; RNF-05.
@@ -67,7 +76,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-05
 - **Tipo:** Data
 - **Descrição:** Validar datas/fusos e gerar cinco datas a partir de início confiável fornecido.
-- **Critérios de aceite:** Vitest cobre datas reais, fuso inválido, cinco dias em New York atravessando DST e Auckland atravessando o ano; resultado independe do fuso do processo. Não somar períodos fixos de 24 h nem inventar início pelo relógio.
+- **Critérios de aceite:** Vitest rejeita `2026-02-30` e fuso não reconhecido. De `2026-10-30` em `America/New_York`, retorna 30/10, 31/10, 01/11, 02/11 e 03/11/2026; de `2026-12-30` em `Pacific/Auckland`, retorna 30/12, 31/12/2026, 01/01, 02/01 e 03/01/2027. Asserções mantêm essas datas com os fusos de processo/dispositivo de EC-20; sem início confiável, não gerar período pelo relógio.
 - **Dependências:** T-01.
 - **Arquivos prováveis:** `src/lib/dates.ts`, `tests/unit/dates.test.ts`.
 - **Rastreabilidade:** CA-03.3; EC-20, EC-43; RNF-05.
@@ -77,7 +86,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-06
 - **Tipo:** Data
 - **Descrição:** Converter referência com offset ou correspondência única no fuso IANA.
-- **Critérios de aceite:** Vitest interpreta offset explícito; em `America/New_York`, `2026-03-08T02:30` e `2026-11-01T01:30` retornam `null`. Sem fuso, local sem offset é desconhecido; não usar offset fixo da resposta. Se Intl exigir algoritmo extenso próprio, registrar revisão da decisão antes de adotar alternativa.
+- **Critérios de aceite:** Vitest compara `2026-10-29T13:00:00-03:00` ao instante `2026-10-29T16:00:00Z`, inclusive sem fuso IANA. Em `America/New_York`, `2026-03-08T02:30` e `2026-11-01T01:30` retornam `null`; uma referência local única retorna o instante esperado, confirmado por volta aos mesmos componentes locais. Sem fuso/offset, retornar `null`, não aplicar offset fixo ou fuso do dispositivo. Se não for possível demonstrar esses resultados com helper pequeno, a tarefa fica bloqueada até revisão da decisão de datas do plano; não aprovar por registro da dificuldade.
 - **Dependências:** T-05.
 - **Arquivos prováveis:** `src/lib/dates.ts`, `tests/unit/dates.test.ts`.
 - **Rastreabilidade:** EC-20, EC-28, EC-43; RNF-05.
@@ -87,7 +96,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-07
 - **Tipo:** Data
 - **Descrição:** Calcular idade/período anterior e formatar conclusão com relógio explícito.
-- **Critérios de aceite:** Vitest diferencia 60/61 min, referência ausente/futura e mudança de dia; conclusão e referência são distintas. Fuso válido usa calendário da cidade; inválido usa UTC rotulada com aviso, nunca fuso do dispositivo/geocoding.
+- **Critérios de aceite:** Com referência às 13h, Vitest retorna ausência de marca por idade às 14h e “Desatualizado” às 14h01; referência ausente/inválida/futura retorna “Atualidade desconhecida”. Conclusão fornecida às 14h continua distinta da referência às 13h. À meia-noite local, período anterior é identificado sem mudar datas. Fuso inválido produz conclusão UTC explicitamente rotulada e aviso; nenhum resultado usa fuso do dispositivo/geocoding.
 - **Dependências:** T-06.
 - **Arquivos prováveis:** `src/lib/dates.ts`, `tests/unit/dates.test.ts`.
 - **Rastreabilidade:** CA-08.2; EC-27, EC-28, EC-31, EC-43; RNF-05.
@@ -97,7 +106,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-08
 - **Tipo:** Data
 - **Descrição:** Implementar a tabela textual pt-BR da spec.
-- **Critérios de aceite:** Vitest cobre todos os códigos especificados; desconhecido retorna condição indisponível, sem ícone arbitrário. Texto é suficiente sem cor/ícone.
+- **Critérios de aceite:** Tabela de testes compara cada código WMO listado no contrato da spec ao texto pt-BR correspondente, incluindo intensidade. Código fora da lista retorna condição indisponível e nenhum ícone arbitrário; a saída contém texto mesmo sem ícone/cor.
 - **Dependências:** T-01.
 - **Arquivos prováveis:** `src/lib/weatherCodes.ts`, `tests/unit/weatherCodes.test.ts`.
 - **Rastreabilidade:** CA-02.1; EC-14; RNF-02, RNF-05.
@@ -107,7 +116,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-09
 - **Tipo:** Data
 - **Descrição:** Criar guards puros para números, coordenadas e identidade.
-- **Critérios de aceite:** Vitest cobre `unknown`, valores não finitos, limites WGS84, nome vazio, identificador inválido, porcentagens fora de 0–100 e vento negativo. Zero e temperaturas negativas permanecem válidos; guards não leem navegador/relógio.
+- **Critérios de aceite:** Vitest rejeita tipos incompatíveis, `NaN`, infinitos, latitude fora de −90 a 90, longitude fora de −180 a 180, nome vazio e ID não inteiro. Aceita limites de coordenadas, porcentagens 0/100 e vento 0; rejeita porcentagens −1/120 e vento negativo. Temperatura negativa/zero é válida. Inspeção confirma zero acesso a navegador/relógio.
 - **Dependências:** T-01.
 - **Arquivos prováveis:** `src/lib/validation.ts`, `tests/unit/validation.test.ts`.
 - **Rastreabilidade:** RF-01, RF-02, RF-03, RF-06; EC-11; RNF-06.
@@ -127,7 +136,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-11
 - **Tipo:** Data
 - **Descrição:** Associar valores às datas sem deslocar índices ou fabricar período.
-- **Critérios de aceite:** Vitest cobre cinco datas/placeholders com âncora e fuso válidos; sem eles retorna período indisponível. Série desalinhada é invalidada isoladamente; duplicatas invalidam posições afetadas, datas inválidas/fora do período não deslocam valores. Unidades são verificadas; mínima/máxima incoerentes não são trocadas silenciosamente.
+- **Critérios de aceite:** Com âncora/fuso válidos, Vitest compara exatamente cinco datas e campos às entradas; lacuna identificável recebe campos `null` sem mover valores dos dias seguintes. Sem âncora/fuso, previsão é `[]`. Série com tamanho diferente de `daily.time` tem seus campos invalidados, preservando outras séries; todas as posições de data duplicada são invalidadas, datas inválidas/fora do período não deslocam valores. Unidade incompatível invalida campos afetados; mínima maior que máxima não é corrigida trocando valores.
 - **Dependências:** T-05, T-08, T-09.
 - **Arquivos prováveis:** `src/lib/normalizeWeather.ts`, `tests/unit/normalizeForecast.test.ts`.
 - **Rastreabilidade:** CA-03.1 a CA-03.3; EC-10 a EC-12, EC-20, EC-40, EC-43.
@@ -149,7 +158,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-13
 - **Tipo:** Data
 - **Descrição:** Ler JSON como `unknown` com opções seguras de fetch.
-- **Critérios de aceite:** Mock verifica HTTPS/hosts constantes, sem credenciais, `no-store`, `redirect: 'error'`, `no-referrer` e sinal externo. Rede/CORS, HTTP 400/500, JSON inválido/envelope de erro são falhas explícitas, nunca vazio. Diagnóstico não inclui URL/corpo/localização.
+- **Critérios de aceite:** Mock verifica HTTPS/hosts constantes, credenciais omitidas, `cache: 'no-store'`, `redirect: 'error'`, `referrerPolicy: 'no-referrer'` e sinal externo. Rejeição de fetch retorna `network`; HTTP 400/500 retorna `http` com status; JSON inválido ou `error: true` em HTTP 200 retorna `invalid-response`; todos com `ok: false`, nunca lista vazia. Captura dos diagnósticos não contém URL/corpo/localização nem objeto bruto.
 - **Dependências:** T-02.
 - **Arquivos prováveis:** `src/services/http.ts`, `tests/unit/http.test.ts`.
 - **Rastreabilidade:** CA-05.3, CA-05.4; EC-06; RNF-06.
@@ -159,7 +168,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-14
 - **Tipo:** Data
 - **Descrição:** Encerrar transporte pendente e impedir aceite após o prazo.
-- **Critérios de aceite:** Fake timers verificam pendência aos 9.999 ms e timeout aos 10.000 ms, incluindo leitura do corpo. Contexto permite conferir deadline antes de aceitar normalização; resposta tardia/cancelamento não vira sucesso. Limpar timer/listeners sem retry.
+- **Critérios de aceite:** Fake timers verificam promessa pendente aos 9.999 ms e `ok: false`/`timeout` aos 10.000 ms, tanto aguardando fetch quanto corpo retido. Conferência final rejeita aceite após deadline, mesmo com resposta utilizável; cancelamento externo invalida operação, sem sucesso tardio. Contador mantém uma chamada, e conclusão/cancelamento remove timers/listeners instalados pela operação.
 - **Dependências:** T-13.
 - **Arquivos prováveis:** `src/services/http.ts`, `tests/unit/http.test.ts`.
 - **Rastreabilidade:** EC-07, EC-33; RF-05.
@@ -169,7 +178,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-15
 - **Tipo:** Data
 - **Descrição:** Retornar erro 429 com prazo válido opcional e serviço identificado.
-- **Critérios de aceite:** Vitest cobre segundos inteiros não negativos, data HTTP futura/passada, cabeçalho inválido/ausente/inacessível. Somente prazo futuro válido gera espera; não presumir bloqueio compartilhado, recuperação ou retry automático.
+- **Critérios de aceite:** Com relógio fixo `now`, Vitest compara `Retry-After: 30` e data HTTP 30 s futura a `retryAtMs = now + 30.000`. Zero/data passada não criam espera futura; valor inválido, ausente ou inacessível retorna prazo `null`. Todos retornam `rate-limit` e serviço afetado; contador de fetch permanece uma chamada, sem retry ou bloqueio inferido do outro serviço.
 - **Dependências:** T-14.
 - **Arquivos prováveis:** `src/services/http.ts`, `tests/unit/http.test.ts`.
 - **Rastreabilidade:** EC-08, EC-09, EC-39.
@@ -179,7 +188,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-16
 - **Tipo:** Test
 - **Descrição:** Disponibilizar dados controlados reutilizáveis de localidades.
-- **Critérios de aceite:** Fixtures tipadas incluem dez cidades completas, doze em ordem conhecida, homônimos distinguíveis/indistinguíveis, nomes longos/não latinos, vazio e itens inválidos. Inspeção confirma dados sintéticos e ausência de localização pessoal; checks de tipos passam.
+- **Critérios de aceite:** Inspeção das fixtures confirma listas com exatamente 10 e 12 itens em ordem explícita, pares homônimos com/sem contexto distintivo, nome longo/não latino, resposta vazia e item inválido. Cada variante declara o resultado esperado (IDs/ordem aceitos ou erro); dados são sintéticos, sem localização pessoal. `pnpm build` encerra com código 0; variantes inválidas permanecem entradas externas `unknown`, não casts para `City`.
 - **Dependências:** T-01.
 - **Arquivos prováveis:** `tests/fixtures/geocoding.ts`.
 - **Rastreabilidade:** EC-02, EC-04, EC-05, EC-35; RNF-06.
@@ -189,7 +198,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-17
 - **Tipo:** Test
 - **Descrição:** Disponibilizar resposta completa e variantes parciais reutilizáveis.
-- **Critérios de aceite:** Fixtures incluem cinco dias com todas as unidades/campos, zero, lacuna, série curta, datas duplicadas/inválidas, fuso/âncora ausentes e seções inutilizáveis. Datas/valores esperados são explícitos e dados são sintéticos; checks de tipos passam.
+- **Critérios de aceite:** Fixture completa contém exatamente cinco datas e todas as unidades/variáveis atuais/diárias do plano. Variantes separadas representam zero, lacuna, série curta, datas duplicadas/inválidas, fuso/âncora ausentes e seções inutilizáveis; cada uma declara datas/campos preservados, campos `null` ou erro esperado. Inspeção confirma dados sintéticos e `pnpm build` encerra com código 0; JSON inválido é entrada `unknown`, não modelo interno forçado.
 - **Dependências:** T-01.
 - **Arquivos prováveis:** `tests/fixtures/forecast.ts`.
 - **Rastreabilidade:** CA-02.1, CA-03.2; EC-10 a EC-14, EC-36, EC-43.
@@ -209,7 +218,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-19
 - **Tipo:** Data
 - **Descrição:** Obter atuais e cinco dias numa chamada e normalizar a resposta.
-- **Critérios de aceite:** Mock confere campos `current`/`daily` do plano, cinco dias, fuso auto, Celsius, km/h e ISO. Testar completo/parcial/erro sem mockar normalizador; alvo solicitado não é substituído pela grade. Conferir sinal/deadline após normalização; só resultado vigente poderá receber conclusão no controlador.
+- **Critérios de aceite:** Mock compara endpoint e cada parâmetro `current`/`daily` ao External APIs do plano, com `forecast_days=5`, `timezone=auto`, `temperature_unit=celsius`, `wind_speed_unit=kmh`, `timeformat=iso8601`. Sem mockar normalizador, fixture completa retorna campos esperados, parcial retorna `partial: true` e ambas as seções inutilizáveis retornam `invalid-response`. Local mantém alvo solicitado mesmo com grade diferente; sinal cancelado/deadline vencido impede retorno utilizável. Horário definitivo de conclusão só é confirmado pelo controlador vigente.
 - **Dependências:** T-12, T-15, T-17.
 - **Arquivos prováveis:** `src/services/forecast.ts`, `tests/unit/forecast.test.ts`.
 - **Rastreabilidade:** CA-01.3, CA-02.1, CA-03.2, CA-08.1; EC-07, EC-43.
@@ -219,7 +228,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-20
 - **Tipo:** Data
 - **Descrição:** Recuperar somente cidade/unidade válidas da chave própria.
-- **Critérios de aceite:** Vitest cobre ausência, leitura indisponível, JSON corrompido e cidade inválida com Fahrenheit válido. Preservar campos válidos, informar descarte/falha e mapear `C|F` para `Unit`; nenhuma rede.
+- **Critérios de aceite:** Vitest compara chave ausente a preferências vazias sem descarte; `C|F` a `celsius|fahrenheit`. Cidade inválida com `F` preserva Fahrenheit e marca descarte da cidade; JSON corrompido informa descarte do conteúdo, sem preferências inventadas. Exceção de leitura retorna `storage-read`; contador de rede/geolocalização é zero em todos os casos.
 - **Dependências:** T-02, T-09.
 - **Arquivos prováveis:** `src/services/preferences.ts`, `tests/unit/preferences.test.ts`.
 - **Rastreabilidade:** CA-07.1; EC-22, EC-30; RNF-06.
@@ -249,7 +258,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-23
 - **Tipo:** Data
 - **Descrição:** Obter coordenadas somente por chamada explícita.
-- **Critérios de aceite:** Vitest demonstra nenhum acesso na inicialização; `maximumAge: 0`, sem exigir alta precisão, coordenadas validadas e prazo próprio de 10 s. Negação/ausência de suporte/indisponibilidade/timeout são explícitos; callback tardio não retorna sucesso. Não persistir ou registrar coordenadas.
+- **Critérios de aceite:** Vitest conta zero acessos ao importar/inicializar; chamada explícita usa `maximumAge: 0` sem exigir alta precisão e devolve coordenadas válidas. Negação retorna `permission-denied`; ausência de suporte/posição indisponível retorna `unavailable`; aos 10.000 ms pendentes retorna `timeout`. Callback após prazo não muda resultado; captura de storage/diagnóstico não contém coordenadas.
 - **Dependências:** T-02, T-09.
 - **Arquivos prováveis:** `src/services/geolocation.ts`, `tests/unit/geolocation.test.ts`.
 - **Rastreabilidade:** CA-06.1 a CA-06.3; EC-07, EC-18, EC-19.
@@ -291,7 +300,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-27
 - **Tipo:** Data
 - **Descrição:** Iniciar hook com ação explícita de busca e retry pelo termo enviado.
-- **Critérios de aceite:** Vitest verifica trim externo, nenhuma chamada vazia/por edição e resultado success/empty/error. Retry ignora texto ainda não enviado; rejeição inesperada encerra loading com `unexpected` e diagnóstico sanitizado.
+- **Critérios de aceite:** Vitest envia “ São Paulo ” como “São Paulo”; editar texto ou enviar só espaços faz zero chamadas. Lista válida gera success, vazio documentado gera empty e falha gera error, encerrando loading. Após enviar A e editar B sem envio, retry chama A. Rejeição inesperada gera `unexpected` e diagnóstico somente de categoria/serviço, sem input/objeto bruto.
 - **Dependências:** T-18, T-24.
 - **Arquivos prováveis:** `src/hooks/useWeatherApp.ts`, `tests/unit/useWeatherApp.search.test.ts`.
 - **Rastreabilidade:** EC-01, EC-02, EC-04, EC-06; CA-05.3; RNF-06.
@@ -311,7 +320,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-29
 - **Tipo:** Data
 - **Descrição:** Aplicar prazo retornado pelo geocoding a qualquer termo.
-- **Critérios de aceite:** Fake timers comprovam bloqueio de termos iguais/diferentes até prazo válido; expiração só libera ação manual. Sem prazo válido/passado permite tentativa manual, sem retry. Estado identifica serviço afetado.
+- **Critérios de aceite:** Após 429 com prazo de 30 s, fake timers/contadores comprovam zero novas chamadas de geocoding aos 29.999 ms para termo igual ou diferente. Aos 30.000 ms, contador permanece igual até ação manual, que inicia exatamente uma chamada. Prazo `null`/passado permite essa ação sem espera; estado mantém erro do serviço geocoding.
 - **Dependências:** T-28.
 - **Arquivos prováveis:** `src/hooks/useWeatherApp.ts`, `tests/unit/useWeatherApp.search.test.ts`.
 - **Rastreabilidade:** EC-08, EC-09, EC-39.
@@ -371,7 +380,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-35
 - **Tipo:** Data
 - **Descrição:** Integrar localização ao token meteorológico com prazos separados.
-- **Critérios de aceite:** Vitest demonstra zero acesso inicial, 10 s para localização e outros 10 s para forecast. Seleção manual supera callback tardio; retry de localização exige ação, falha de forecast conhecido repete só forecast. Usar “Sua localização”, sem reverse geocoding.
+- **Critérios de aceite:** Vitest conta zero acessos iniciais; clique inicia uma localização. Localização pendente expira aos 10.000 ms; se coordenadas chegam aos 9.000 ms, forecast recebe prazo próprio até 19.000 ms. Seleção manual posterior impede forecast pelo callback tardio. Retry após erro de localização só ocorre por ação; após erro de forecast conhecido, repete forecast com zero novos acessos à localização. Alvo é device/“Sua localização”; zero chamadas de reverse geocoding.
 - **Dependências:** T-23, T-32.
 - **Arquivos prováveis:** `src/hooks/useWeatherApp.ts`, `tests/unit/useWeatherApp.location.test.ts`.
 - **Rastreabilidade:** CA-06.1 a CA-06.3, CA-08.1; EC-07, EC-17 a EC-19.
@@ -381,7 +390,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-36
 - **Tipo:** Data
 - **Descrição:** Ler preferências na abertura e resolver cidade somente após confirmação.
-- **Critérios de aceite:** Vitest verifica ausência de rede/localização inicial; confirmação chama geocoding, exigindo seleção mesmo com resultado único. Unidade válida é preservada; falha/descarte são anunciados sem bloquear uso.
+- **Critérios de aceite:** Vitest com cidade/Fahrenheit salvos conta zero chamadas de rede/localização na abertura; unidade fica Fahrenheit e não há alvo ativo. Confirmar chama geocoding uma vez; resultado único não dispara forecast até seleção. Falha de leitura mantém estado inicial com feedback; descarte só da cidade mantém Fahrenheit com feedback, e busca manual continua acionável.
 - **Dependências:** T-20, T-26, T-29.
 - **Arquivos prováveis:** `src/hooks/useWeatherApp.ts`, `tests/unit/useWeatherApp.preferences.test.ts`.
 - **Rastreabilidade:** CA-07.1; EC-22, EC-23, EC-30, EC-42.
@@ -413,7 +422,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-39
 - **Tipo:** UI
 - **Descrição:** Aplicar base dark glassmorphism conforme Tailwind existente.
-- **Critérios de aceite:** Build gera estilos sem recurso externo; inspeção no preview confirma fundo/base tipográfica e foco perceptível nos controles existentes. Sem alteração em lógica, dependências ou componentes; contraste completo será medido em T-87.
+- **Critérios de aceite:** `pnpm build` encerra com código 0; inspeção no preview registra estilos computados de fundo/tipografia do tema dark e zero requisições para fontes/estilos externos. Navegação por Tab nos controles existentes mantém indicador visível que não depende apenas de mudança de cor. Diff altera somente CSS, sem lógica/dependências/componentes; medidas completas de contraste pertencem a T-87.
 - **Dependências:** nenhuma.
 - **Arquivos prováveis:** `src/index.css`.
 - **Rastreabilidade:** RNF-01, RNF-02.
@@ -423,7 +432,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-40
 - **Tipo:** UI
 - **Descrição:** Substituir tela demonstrativa por estrutura base, sem serviços.
-- **Critérios de aceite:** Testing Library encontra título pt-BR e landmark principal, sem dados meteorológicos inventados ou efeitos. App inicialmente aceita composição posterior, sem criar wrapper adicional.
+- **Critérios de aceite:** Testing Library encontra exatamente um landmark `main` e um título principal em pt-BR. Na montagem, não há cartões com dados fictícios; contadores de fetch/geolocalização são zero. Diff limita-se ao shell e seu teste, sem criar wrapper adicional ou antecipar fluxos das tarefas de composição.
 - **Dependências:** T-39.
 - **Arquivos prováveis:** `src/App.tsx`, `tests/components/App.test.tsx`.
 - **Rastreabilidade:** RNF-02, RNF-05; RF-05.
@@ -433,7 +442,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-41
 - **Tipo:** UI
 - **Descrição:** Exibir fallback recuperável para falha de render.
-- **Critérios de aceite:** Teste com filho que lança erro verifica mensagem pt-BR e ação de recuperação, sem stack/dados pessoais ou sucesso fictício. Não tratar rejeições assíncronas como se fossem capturadas por essa fronteira.
+- **Critérios de aceite:** Testing Library monta filho que lança erro: conteúdo falho é substituído por mensagem pt-BR e controle acessível de recuperação. Após remover a causa no cenário controlado e acionar recuperação, conteúdo normal volta a ser apresentado. UI/diagnóstico próprio não contêm stack ou sentinela pessoal do erro; fallback não aparece como sucesso meteorológico. Rejeições assíncronas continuam sob responsabilidade do controlador.
 - **Dependências:** nenhuma.
 - **Arquivos prováveis:** `src/components/AppErrorBoundary.tsx`, `tests/components/AppErrorBoundary.test.tsx`.
 - **Rastreabilidade:** RF-05; RNF-04, RNF-06.
@@ -443,7 +452,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-42
 - **Tipo:** UI
 - **Descrição:** Envolver App uma única vez na inicialização.
-- **Critérios de aceite:** Build e inspeção da montagem no preview confirmam App dentro da fronteira única e estilos carregados; o fallback já está demonstrado pelo teste de T-41. Documento mantém idioma `pt-BR`; nenhuma chamada de domínio é adicionada ao entrypoint.
+- **Critérios de aceite:** `pnpm build` encerra com código 0; inspeção do entrypoint confirma exatamente uma fronteira envolvendo App e import dos estilos. Preview apresenta o shell de T-40, e `document.documentElement.lang` é `pt-BR`; fallback já demonstrado em T-41. Diff não adiciona chamada/import de serviço ao entrypoint.
 - **Dependências:** T-40, T-41.
 - **Arquivos prováveis:** `src/main.tsx`, `index.html`.
 - **Rastreabilidade:** RF-05; RNF-04, RNF-05.
@@ -453,7 +462,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-43
 - **Tipo:** UI
 - **Descrição:** Expor envio por botão/Enter com texto local ainda não enviado.
-- **Critérios de aceite:** Testing Library verifica label, orientação associada ao vazio, campo editável em loading e callback somente ao enviar. Acentos/escrita não latina são preservados; componente não chama serviços.
+- **Critérios de aceite:** Testing Library encontra textbox pelo label; botão e Enter acionam o callback de envio uma vez por ação, edição sozinha não o aciona. Validação de vazio fornecida ao componente é vinculada ao campo por descrição acessível. Em loading, campo aceita edição e mantém foco; termos de EC-02 preservam grafia. Componente não importa/chama serviços.
 - **Dependências:** T-40.
 - **Arquivos prováveis:** `src/components/CitySearch.tsx`, `tests/components/CitySearch.test.tsx`.
 - **Rastreabilidade:** CA-05.1; EC-01, EC-02, EC-29; RNF-02.
@@ -473,7 +482,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-45
 - **Tipo:** UI
 - **Descrição:** Renderizar mensagens pt-BR para estado e recuperação, recebidos por props.
-- **Critérios de aceite:** Testing Library diferencia loading/vazio/parcial/erro e motivo de retry bloqueado; recuperação funciona por teclado. Regiões semânticas não duplicam anúncio no DOM; não expor erro bruto nem inferir offline de fetch rejeitado. Sem serviços ou mudança automática de foco.
+- **Critérios de aceite:** Testing Library fornece separadamente loading/vazio/parcial/erro e encontra mensagem correspondente com orientação; erro não usa texto de vazio. Retry habilitado é alcançado por Tab e acionado por Enter uma vez; bloqueado não chama callback e tem motivo textual acessível. Uma única região semântica contém cada mensagem anunciável, sem cópia duplicada; foco previamente colocado não muda. Não renderizar erro bruto/URL nem afirmar offline apenas por rejeição de fetch.
 - **Dependências:** T-02, T-40.
 - **Arquivos prováveis:** `src/components/QueryFeedback.tsx`, `tests/components/QueryFeedback.test.tsx`.
 - **Rastreabilidade:** CA-05.1 a CA-05.4; EC-06 a EC-09, EC-29, EC-39.
@@ -483,7 +492,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-46
 - **Tipo:** UI
 - **Descrição:** Renderizar valores atuais normalizados, identidade e informação temporal.
-- **Critérios de aceite:** Teste com props verifica cinco campos/unidades, condição textual e zero distinto de ausência. Conclusão, referência, “Desatualizado”, “Atualidade desconhecida” e “Não atualizados” são distinguíveis; fuso inválido mostra conclusão UTC rotulada. Não acessar relógio/rede diretamente.
+- **Critérios de aceite:** Testing Library com valores de CA-02.1 encontra 20 °C, sensação 18 °C, céu limpo, 60% e 10 km/h, com cidade identificada. Zero é exibido como zero e `null` como “Sem dados”. Casos separados encontram rótulos de conclusão/referência, “Desatualizado”, “Atualidade desconhecida” e “Não atualizados”; fuso inválido exibe UTC e aviso. Componentes recebem tempo/estado por props, sem leitura direta de relógio/rede.
 - **Dependências:** T-04, T-07, T-08, T-40.
 - **Arquivos prováveis:** `src/components/CurrentWeatherCard.tsx`, `tests/components/CurrentWeatherCard.test.tsx`.
 - **Rastreabilidade:** CA-02.1, CA-02.2, CA-08.2; EC-10, EC-11, EC-14, EC-19, EC-25, EC-27, EC-28, EC-43.
@@ -493,7 +502,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-47
 - **Tipo:** UI
 - **Descrição:** Renderizar data recebida e seis campos de um `ForecastDay`.
-- **Critérios de aceite:** Testing Library verifica condição, mínima/máxima, probabilidade máxima, umidade média e vento máximo com unidades corretas. Ausência é “Sem dados”; não rotular como rajada/volume nem converter data ao fuso do dispositivo.
+- **Critérios de aceite:** Testing Library compara os seis campos às props: condição, mínima/máxima na unidade ativa, probabilidade máxima 70%, umidade média 65% e vento máximo 20 km/h no exemplo EC-40. `null` é “Sem dados”; textos não dizem rajada ou volume. Data local `2026-10-29` continua 29/10 mesmo com dispositivo no dia seguinte.
 - **Dependências:** T-04, T-05, T-08, T-40.
 - **Arquivos prováveis:** `src/components/ForecastDayCard.tsx`, `tests/components/ForecastDayCard.test.tsx`.
 - **Rastreabilidade:** CA-03.2; EC-10, EC-11, EC-14, EC-40.
@@ -503,7 +512,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-48
 - **Tipo:** UI
 - **Descrição:** Compor atuais e cartões diários sem transformar dados externos.
-- **Critérios de aceite:** Props controladas mostram cinco datas em ordem com placeholders; ausência de seção ou período é explícita, preservando a seção utilizável. Período anterior usa datas absolutas e aviso, sem “hoje” incorreto.
+- **Critérios de aceite:** Testing Library com período 29/10 a 02/11/2026 encontra exatamente cinco cartões em ordem; dia sem dados continua com data e campos “Sem dados”. Casos separados de current `null` ou forecast `[]` mostram seção indisponível e preservam a outra utilizável. Ao fornecer relógio de 30/10, datas permanecem, 29/10 não é rotulado “hoje” e aviso de período anterior é encontrado.
 - **Dependências:** T-07, T-46, T-47.
 - **Arquivos prováveis:** `src/components/WeatherPanel.tsx`, `tests/components/WeatherPanel.test.tsx`.
 - **Rastreabilidade:** CA-03.1, CA-03.3; EC-12, EC-20, EC-31, EC-36, EC-43.
@@ -513,7 +522,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-49
 - **Tipo:** UI
 - **Descrição:** Mostrar créditos e aviso de estimativas junto aos dados.
-- **Critérios de aceite:** Testing Library encontra links Open-Meteo/CC BY 4.0, aviso de estimativas e indicação de conversão/arredondamento conforme unidade. Texto não implica endosso/garantia; aviso pode atender ambas as seções.
+- **Critérios de aceite:** Testing Library encontra links acessíveis com destinos `https://open-meteo.com/` e `https://creativecommons.org/licenses/by/4.0/`. Em Celsius, texto informa arredondamento; em Fahrenheit, conversão e arredondamento. Aviso junto aos dados afirma que são estimativas, não garantias, sem atribuir endosso ao provedor; ambos os conjuntos de props passam.
 - **Dependências:** T-40.
 - **Arquivos prováveis:** `src/components/WeatherAttribution.tsx`, `tests/components/WeatherAttribution.test.tsx`.
 - **Rastreabilidade:** CA-02.3; EC-41.
@@ -523,7 +532,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-50
 - **Tipo:** UI
 - **Descrição:** Expor unidade ativa e callback sem converter/copiar dados em estado.
-- **Critérios de aceite:** Testing Library verifica rótulos, seleção anunciada e operação por teclado; controle permanece disponível em loading. Clique altera somente callback da preferência, sem rede.
+- **Critérios de aceite:** Testing Library encontra Celsius/Fahrenheit por nome acessível e estado selecionado correspondente à prop. Clique ou teclado chama callback uma vez com a unidade escolhida; atualizar prop move o estado selecionado. Em loading, controle continua operável; contador de rede é zero e não há cópia das temperaturas em estado.
 - **Dependências:** T-01, T-40.
 - **Arquivos prováveis:** `src/components/TemperatureToggle.tsx`, `tests/components/TemperatureToggle.test.tsx`.
 - **Rastreabilidade:** CA-04.1 a CA-04.4; EC-44; RNF-02.
@@ -543,7 +552,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **ID:** T-52
 - **Tipo:** UI
 - **Descrição:** Expor cidade/contexto, confirmação, exclusão e avisos por props.
-- **Critérios de aceite:** Testing Library verifica callbacks por teclado e mensagens distintas de leitura/descarte/escrita/remoção. Remoção falha não anuncia sucesso; painel não usa storage/rede.
+- **Critérios de aceite:** Testing Library encontra cidade/contexto das props; confirmar e apagar são alcançáveis por Tab e Enter chama o respectivo callback uma vez. Props de falha de leitura, descarte, escrita e remoção produzem mensagens correspondentes em casos separados. Falha de remoção informa exclusão não concluída e permite tentar de novo, sem mensagem de sucesso. Nenhum acesso a storage/rede.
 - **Dependências:** T-01, T-40, T-45.
 - **Arquivos prováveis:** `src/components/PreferencesPanel.tsx`, `tests/components/PreferencesPanel.test.tsx`.
 - **Rastreabilidade:** CA-07.1; EC-22 a EC-24, EC-37, EC-38, EC-42.
@@ -557,7 +566,7 @@ Cada tarefa desta entrega altera somente a ligação de props/callbacks indicada
 - **ID:** T-53
 - **Tipo:** UI
 - **Descrição:** Instanciar controlador uma vez e conectar formulário, lista e feedback de busca.
-- **Critérios de aceite:** Integração com serviços controlados verifica abertura sem rede, envio, estados e callback de seleção explícita. Campo mantém foco; App não chama APIs diretamente.
+- **Critérios de aceite:** Testing Library com serviços controlados conta zero chamadas na abertura; envio chama geocoding uma vez, apresenta loading e depois a lista. Antes da escolha, forecast tem zero chamadas; clicar no resultado chama forecast uma vez com o alvo escolhido. Foco permanece no campo quando chegam resultados; inspeção confirma nenhum fetch/storage/geolocation direto em App.
 - **Dependências:** T-30, T-42, T-43, T-44, T-45.
 - **Arquivos prováveis:** `src/App.tsx`, `tests/components/App.test.tsx`.
 - **Rastreabilidade:** CA-01.1 a CA-01.3; CA-05.1, CA-05.2; EC-29.
@@ -567,7 +576,7 @@ Cada tarefa desta entrega altera somente a ligação de props/callbacks indicada
 - **ID:** T-54
 - **Tipo:** UI
 - **Descrição:** Ligar snapshot/estado meteorológico e atribuição já existentes.
-- **Critérios de aceite:** Integração com fixture completa verifica seleção identificada corretamente, atuais/cinco dias e aviso/créditos juntos aos dados. Erro meteorológico não aparece como lista vazia de cidades.
+- **Critérios de aceite:** Testing Library seleciona um de dois homônimos e libera fixture completa: identifica o homônimo escolhido, valores atuais da fixture, exatamente cinco datas em ordem e aviso/créditos junto aos dados. Falha de forecast apresenta erro meteorológico, não “nenhuma cidade encontrada”; lista de busca não é substituída pelo erro de previsão.
 - **Dependências:** T-17, T-32, T-48, T-49, T-53.
 - **Arquivos prováveis:** `src/App.tsx`, `tests/components/App.test.tsx`.
 - **Rastreabilidade:** CA-02.1 a CA-02.3, CA-03.1 a CA-03.3.
@@ -577,7 +586,7 @@ Cada tarefa desta entrega altera somente a ligação de props/callbacks indicada
 - **ID:** T-55
 - **Tipo:** UI
 - **Descrição:** Expor ação de refresh e relógio do controlador sem novos efeitos.
-- **Critérios de aceite:** Integração comprova acionamento manual e indicação de snapshot em loading/erro; alvo e horários vêm do estado. Sem timer/fetch em App.
+- **Critérios de aceite:** Testing Library com snapshot A aciona atualização: contador de forecast aumenta exatamente uma vez para A e os dados permanecem durante loading. Falha conserva valores/conclusão anteriores e mostra “Não atualizados”; nova tentativa com resposta válida altera valores/conclusão para os novos dados. Inspeção confirma zero timer/fetch próprio em App.
 - **Dependências:** T-34, T-54.
 - **Arquivos prováveis:** `src/App.tsx`, `tests/components/App.test.tsx`.
 - **Rastreabilidade:** CA-08.2, CA-08.3; EC-25.
@@ -587,7 +596,7 @@ Cada tarefa desta entrega altera somente a ligação de props/callbacks indicada
 - **ID:** T-56
 - **Tipo:** UI
 - **Descrição:** Distribuir uma única preferência a seletor e cartões.
-- **Critérios de aceite:** Integração alterna todas as temperaturas pela unidade vigente; não cria estado Fahrenheit ou chamada meteorológica. Preferência é alterada pela ação existente.
+- **Critérios de aceite:** Testing Library alterna Celsius/Fahrenheit e compara temperatura, sensação e dez extremos diários ao helper já validado em T-04, com valores esperados explícitos no teste. Nenhuma temperatura fica na unidade anterior; vento/umidade/precipitação e contagem de forecast não mudam. Seletor reflete unidade do controlador; App não armazena valores Fahrenheit.
 - **Dependências:** T-37, T-50, T-54.
 - **Arquivos prováveis:** `src/App.tsx`, `tests/components/App.test.tsx`.
 - **Rastreabilidade:** CA-04.1 a CA-04.4; EC-44.
@@ -597,7 +606,7 @@ Cada tarefa desta entrega altera somente a ligação de props/callbacks indicada
 - **ID:** T-57
 - **Tipo:** UI
 - **Descrição:** Ligar botão informado à ação e etapas do controlador.
-- **Critérios de aceite:** Integração comprova ausência de acesso inicial, callback após clique e estado “Sua localização”; recusa mantém formulário manual disponível.
+- **Critérios de aceite:** Testing Library conta zero acessos à localização na montagem e encontra informação prévia ao clique. Clicar chama localização uma vez; coordenadas controladas iniciam forecast correspondente e sucesso identifica “Sua localização”. Em caso separado de recusa, mensagem explica falha e formulário manual permite iniciar geocoding.
 - **Dependências:** T-35, T-51, T-54.
 - **Arquivos prováveis:** `src/App.tsx`, `tests/components/App.test.tsx`.
 - **Rastreabilidade:** CA-06.1 a CA-06.3; EC-19.
@@ -607,7 +616,7 @@ Cada tarefa desta entrega altera somente a ligação de props/callbacks indicada
 - **ID:** T-58
 - **Tipo:** UI
 - **Descrição:** Ligar painel às ações existentes de confirmação/exclusão.
-- **Critérios de aceite:** Integração comprova cidade lembrada sem request inicial, confirmação levando à lista e feedback de exclusão. App não lê/escreve storage; exclusão atualiza seletor sem remover obrigatoriamente consulta.
+- **Critérios de aceite:** Testing Library monta com cidade lembrada/Fahrenheit: painel mostra contexto, seletor mostra Fahrenheit e contadores de rede são zero. Confirmar busca a cidade e mostra lista sem forecast automático. Apagar com sucesso limpa identificação lembrada, seleciona Celsius e conserva consulta existente; falha informa exclusão não concluída. App não acessa storage diretamente.
 - **Dependências:** T-38, T-52, T-53, T-56.
 - **Arquivos prováveis:** `src/App.tsx`, `tests/components/App.test.tsx`.
 - **Rastreabilidade:** CA-07.1; EC-24, EC-37, EC-42.
@@ -621,7 +630,7 @@ Tarefas E2E consomem componentes e dados prontos; não incluem correções de im
 - **ID:** T-59
 - **Tipo:** Test
 - **Descrição:** Exercitar a corrida cruzada dos dois fluxos do controlador.
-- **Critérios de aceite:** Promessas controladas demonstram forecast A pendente e busca B concluída, mantendo lista B e clima A corretamente identificados. Inverter ordem também preserva ambos; bloqueio de um serviço não paralisa o outro.
+- **Critérios de aceite:** Vitest retém forecast A, conclui busca B e depois libera A: lista contém B e snapshot/alvo meteorológico contêm A. Inverter ordem produz o mesmo estado final; erro/resultado da busca não muda horários/loading do clima. Com um serviço bloqueado por 429, ação no outro incrementa seu contador de chamadas normalmente.
 - **Dependências:** T-32.
 - **Arquivos prováveis:** `tests/unit/useWeatherApp.integration.test.ts`.
 - **Rastreabilidade:** EC-08, EC-32.
@@ -631,7 +640,7 @@ Tarefas E2E consomem componentes e dados prontos; não incluem correções de im
 - **ID:** T-60
 - **Tipo:** Test
 - **Descrição:** Validar interação cruzada entre unidade/exclusão e forecast.
-- **Critérios de aceite:** Teste integrado altera unidade durante request e recebe resultado na unidade atual; exclusão seguida de resposta/refresh não recria cidade/unidade. Reutilizar testes existentes se já provarem o cruzamento, sem duplicação.
+- **Critérios de aceite:** Vitest inicia forecast em Celsius, muda unidade para Fahrenheit e libera resposta: estado mantém Celsius de origem e preferência Fahrenheit, com uma única chamada meteorológica. Em cenário separado, exclusão seguida de resposta/refresh deixa preferências vazias/Celsius e contador de escrita sem incremento por resposta; escolha posterior só de Fahrenheit salva somente unidade. Se casos existentes já demonstrarem todas essas assertions, referenciá-los em vez de duplicar.
 - **Dependências:** T-38.
 - **Arquivos prováveis:** `tests/unit/useWeatherApp.integration.test.ts`.
 - **Rastreabilidade:** EC-24, EC-38, EC-44.
@@ -641,7 +650,7 @@ Tarefas E2E consomem componentes e dados prontos; não incluem correções de im
 - **ID:** T-61
 - **Tipo:** Infra
 - **Descrição:** Trocar dev server por preview com endereço determinístico.
-- **Critérios de aceite:** Após `pnpm build`, smoke local usa `pnpm exec vite preview --host 127.0.0.1 --port 5173 --strictPort`; baseURL/url coincidem e não há reutilização de dev server. Smoke não chama API externa.
+- **Critérios de aceite:** `pnpm build` e execução Playwright do smoke encerram com código 0. `webServer.command` é `pnpm exec vite preview --host 127.0.0.1 --port 5173 --strictPort`, baseURL/url usam `http://127.0.0.1:5173` e `reuseExistingServer` é falso. Smoke encontra landmark/título do shell e registra zero chamadas a APIs externas.
 - **Dependências:** T-40.
 - **Arquivos prováveis:** `playwright.config.ts`, `tests/e2e/smoke.spec.ts`.
 - **Rastreabilidade:** RNF-03, RNF-07.
@@ -651,7 +660,7 @@ Tarefas E2E consomem componentes e dados prontos; não incluem correções de im
 - **ID:** T-62
 - **Tipo:** Infra
 - **Descrição:** Configurar engines e perfis sem produto cartesiano.
-- **Critérios de aceite:** Smoke executa desktop Chromium/Firefox/WebKit, Chromium touch 390 × 844 e WebKit móvel. Relatório identifica projetos reais; fluxos principais terão cobertura mobile, sem alegar Safari real por emulação.
+- **Critérios de aceite:** Smoke de T-61 passa nos cinco projetos: desktop Chromium, Firefox e WebKit, Chromium touch 390 × 844 e WebKit móvel. Relatório lista uma execução por projeto e configuração confirma viewport/toque do móvel. Falta de engine/execução é pendência; seleção dos testes móveis deve incluir busca, unidade, recuperação e preferências quando disponíveis, sem chamar emulação de Safari real.
 - **Dependências:** T-61.
 - **Arquivos prováveis:** `playwright.config.ts`, `tests/e2e/smoke.spec.ts`.
 - **Rastreabilidade:** RNF-01, RNF-07.
@@ -671,7 +680,7 @@ Tarefas E2E consomem componentes e dados prontos; não incluem correções de im
 - **ID:** T-64
 - **Tipo:** Test
 - **Descrição:** Acrescentar respostas sintéticas e controle de entrega às fixtures E2E.
-- **Critérios de aceite:** Consumir T-16/T-17 sem alterações; permitir resposta completa/parcial, erro e liberação manual de pendência. Teste de suporte comprova limpeza entre casos e relógio controlado, sem sleeps ou dependência de ordem.
+- **Critérios de aceite:** Playwright de suporte consome T-16/T-17 sem editar dados: completo/parcial entregam o JSON escolhido, erro entrega o status escolhido, pendência não entrega antes da liberação explícita. Avançar relógio altera tempo observado no browser sem espera real. Caso seguinte inicia sem storage, rotas, contadores ou listeners do anterior; ambos passam isoladamente e juntos, sem sleeps.
 - **Dependências:** T-16, T-17, T-63.
 - **Arquivos prováveis:** `tests/e2e/fixtures.ts`, `tests/e2e/fixtures.spec.ts`.
 - **Rastreabilidade:** RF-05; EC-07, EC-33.
@@ -681,7 +690,7 @@ Tarefas E2E consomem componentes e dados prontos; não incluem correções de im
 - **ID:** T-65
 - **Tipo:** Test
 - **Descrição:** Cobrir descoberta da cidade e identidade após seleção.
-- **Critérios de aceite:** Desktop/mobile verificam envio por Enter/botão, trim/grafia, homônimos, limite/ordem, vazio removendo lista antiga e escolha explícita. Clima corresponde ao resultado selecionado; nenhuma chamada por digitação.
+- **Critérios de aceite:** Playwright desktop/mobile compara os resultados de CA-01.1 a CA-01.3 e EC-01/02/04/05/35. Contadores registram zero chamadas por digitação/vazio e zero forecast antes de seleção, uma busca por envio válido e um forecast para o alvo clicado. De 12 resultados, somente os 10 primeiros ficam selecionáveis; vazio remove seleção antiga, homônimos indistinguíveis exibem orientação.
 - **Dependências:** T-54, T-64.
 - **Arquivos prováveis:** `tests/e2e/search.spec.ts`.
 - **Rastreabilidade:** CA-01.1 a CA-01.3, CA-05.2; EC-01, EC-02, EC-04, EC-05, EC-35.
@@ -691,7 +700,7 @@ Tarefas E2E consomem componentes e dados prontos; não incluem correções de im
 - **ID:** T-66
 - **Tipo:** Test
 - **Descrição:** Cobrir uma tentativa falha seguida de recuperação manual.
-- **Critérios de aceite:** Desktop/mobile exercitam rede/HTTP e timeout separadamente; loading mantém edição e foco. Retry usa termo enviado e permite sucesso; chamada atrasada não substitui tentativa nova. Sem conexão não há sucesso offline.
+- **Critérios de aceite:** Playwright desktop/mobile retém resposta e verifica campo editável/foco mantido; rejeição de rede, HTTP 500 e timeout aos 10 s encerram loading com erro/ação manual em casos separados. Antes do clique, contador não aumenta; retry envia termo anterior e apresenta resultado válido. Resposta da tentativa expirada não altera estado novo; sem dados iniciais e rede indisponível, há erro e nenhum cartão de sucesso/cache.
 - **Dependências:** T-54, T-64.
 - **Arquivos prováveis:** `tests/e2e/recovery.spec.ts`.
 - **Rastreabilidade:** CA-05.1, CA-05.3, CA-05.4; EC-06, EC-07, EC-16, EC-29, EC-33.
@@ -711,7 +720,7 @@ Tarefas E2E consomem componentes e dados prontos; não incluem correções de im
 - **ID:** T-68
 - **Tipo:** Test
 - **Descrição:** Validar dados completos e semânticas na UI do navegador.
-- **Critérios de aceite:** Fixture completa apresenta atuais, cinco datas no fuso e seis campos por dia, unidades, condição textual, estimativas e atribuição. Usar casos DST/virada de ano representativos, sem repetir todas as tabelas unitárias.
+- **Critérios de aceite:** Playwright compara cada valor atual e os seis campos de cada um dos cinco dias à fixture, com unidades/textos e links de atribuição de CA-02/CA-03 e EC-40/41. Nos dois casos de EC-20, datas são exatamente 30/10 a 03/11/2026 e 30/12/2026 a 03/01/2027, apesar do fuso distinto do dispositivo. Zero datas duplicadas/deslocadas e aviso de estimativas presente.
 - **Dependências:** T-54, T-64.
 - **Arquivos prováveis:** `tests/e2e/weather.spec.ts`.
 - **Rastreabilidade:** CA-02.1 a CA-02.3, CA-03.1 a CA-03.3; EC-20, EC-40, EC-41.
@@ -721,7 +730,7 @@ Tarefas E2E consomem componentes e dados prontos; não incluem correções de im
 - **ID:** T-69
 - **Tipo:** Test
 - **Descrição:** Demonstrar preservação do utilizável sem fabricação de dados.
-- **Critérios de aceite:** Exercitar campo/dia ausente, série desalinhada, código desconhecido, seção isolada válida e ambas inutilizáveis. Fuso/âncora inválidos não fabricam datas; atuais preservados usam UTC rotulada quando necessário. Ausência estrutural de campo obrigatório bloqueia aceite do contrato, não vira aprovação por placeholder.
+- **Critérios de aceite:** Playwright executa variantes separadas de EC-10 a EC-14, EC-36 e EC-43 e compara textos/valores esperados: ausência é “Sem dados”, zero permanece zero, código desconhecido é “Condição não disponível”, série ambígua não desloca valores. Uma seção válida permanece com aviso; ambas inválidas geram erro sem novo horário de sucesso. Sem âncora/fuso não há cinco datas inventadas; atuais utilizáveis mostram UTC/aviso se fuso inválido. Evidência de ausência estrutural de campo obrigatório fica como bloqueio contratual, não aceite por placeholder.
 - **Dependências:** T-54, T-64.
 - **Arquivos prováveis:** `tests/e2e/partialWeather.spec.ts`.
 - **Rastreabilidade:** EC-10 a EC-14, EC-36, EC-43.
@@ -751,7 +760,7 @@ Tarefas E2E consomem componentes e dados prontos; não incluem correções de im
 - **ID:** T-72
 - **Tipo:** Test
 - **Descrição:** Exercitar salvar, reabrir, confirmar e selecionar novamente.
-- **Critérios de aceite:** Desktop/mobile restauram unidade/contexto sem rede inicial; confirmação faz geocoding e exige seleção mesmo com resultado único. Inspecionar somente dados permitidos e ausência de envio a servidor de preferências.
+- **Critérios de aceite:** Playwright desktop/mobile salva cidade/Fahrenheit, recarrega e encontra contexto/Fahrenheit com zero rede antes de confirmar. Confirmar gera uma busca, zero forecast até clicar, mesmo com um resultado; seleção gera um forecast. Inspeção de storage encontra somente nome/região/país e `F`; tráfego não contém envio a servidor de preferências.
 - **Dependências:** T-58, T-64.
 - **Arquivos prováveis:** `tests/e2e/preferences.spec.ts`.
 - **Rastreabilidade:** CA-07.1 a CA-07.3; EC-22, EC-23, EC-30, EC-42.
@@ -761,7 +770,7 @@ Tarefas E2E consomem componentes e dados prontos; não incluem correções de im
 - **ID:** T-73
 - **Tipo:** Test
 - **Descrição:** Exercitar exclusão com refresh pendente e reabertura.
-- **Critérios de aceite:** Desktop/mobile demonstram resposta pendente sem recriação, Celsius após sucesso e nenhuma restauração posterior. Falha de remoção informa pendência; escolher só Fahrenheit após excluir salva somente unidade. Chave de outra aplicação permanece.
+- **Critérios de aceite:** Playwright desktop/mobile apaga cidade/Fahrenheit durante refresh retido, libera resposta e recarrega: cidade lembrada ausente, Celsius ativo e chave própria ausente. Chave sentinela externa é idêntica antes/depois. Falha de remoção mostra exclusão não concluída, sem sucesso; em outro caso, escolher só Fahrenheit após excluir e recarregar restaura somente unidade, sem cidade/rede automática.
 - **Dependências:** T-55, T-58, T-64.
 - **Arquivos prováveis:** `tests/e2e/preferences.spec.ts`.
 - **Rastreabilidade:** EC-24, EC-37, EC-38.
@@ -771,7 +780,7 @@ Tarefas E2E consomem componentes e dados prontos; não incluem correções de im
 - **ID:** T-74
 - **Tipo:** Test
 - **Descrição:** Verificar atualização manual e snapshot no navegador.
-- **Critérios de aceite:** Refresh bem-sucedido muda dados/conclusão; falha mantém dados/horários com “Não atualizados”. Trocar alvo remove snapshot anterior; resposta superada não vence a atual. Recuperação também funciona no perfil mobile.
+- **Critérios de aceite:** Playwright desktop/mobile carrega A, faz refresh com fixture diferente e compara novos dados/conclusão ao relógio controlado. Em refresh falho, valores/conclusão permanecem iguais aos anteriores e “Não atualizados”/retry estão presentes. Selecionar B remove cartões de A durante loading e após falha de B; resposta atrasada de A não muda B, sua mensagem ou loading.
 - **Dependências:** T-55, T-64.
 - **Arquivos prováveis:** `tests/e2e/refresh.spec.ts`.
 - **Rastreabilidade:** CA-08.2; EC-15, EC-25, EC-26, EC-33.
@@ -781,7 +790,7 @@ Tarefas E2E consomem componentes e dados prontos; não incluem correções de im
 - **ID:** T-75
 - **Tipo:** Test
 - **Descrição:** Comprovar indicadores temporais no navegador com relógio controlado.
-- **Critérios de aceite:** 60/61 min, referência futura/ausente, meia-noite e retorno à aba alteram avisos sem fetch. Datas recebidas permanecem; atualização manual redefine período. Referência e conclusão continuam informações distintas.
+- **Critérios de aceite:** Playwright com relógio controlado verifica referência 13h: às 14h sem marca por idade, às 14h01 “Desatualizado”; referência futura/ausente mostra “Atualidade desconhecida”. Em EC-31, de 23h59 a 00h01 e retorno à aba mantêm 29/10 a 02/11, sem “hoje” no dia anterior e com aviso; contador de forecast não aumenta. Só refresh apresenta 30/10 a 03/11. Rótulos/valores de referência e conclusão são conferidos separadamente.
 - **Dependências:** T-55, T-64.
 - **Arquivos prováveis:** `tests/e2e/time.spec.ts`.
 - **Rastreabilidade:** CA-08.3; EC-27, EC-28, EC-31.
@@ -821,7 +830,7 @@ Tarefas E2E consomem componentes e dados prontos; não incluem correções de im
 - **ID:** T-79
 - **Tipo:** Infra
 - **Descrição:** Adicionar somente `@axe-core/playwright` como dev dependency via pnpm.
-- **Critérios de aceite:** Manifest/lockfile consistentes, import resolvido e build preservado; nenhuma dependência adicionada ao runtime. Sem escrever suíte nesta tarefa.
+- **Critérios de aceite:** `@axe-core/playwright` aparece somente em `devDependencies`; diff do lockfile corresponde à instalação. `pnpm install --frozen-lockfile` e `pnpm build` encerram com código 0 e import do pacote resolve em execução Node. Nenhuma outra dependência direta de runtime é adicionada; sem suíte nova nesta tarefa.
 - **Dependências:** nenhuma.
 - **Arquivos prováveis:** `package.json`, `pnpm-lock.yaml`.
 - **Rastreabilidade:** RNF-02.
@@ -831,7 +840,7 @@ Tarefas E2E consomem componentes e dados prontos; não incluem correções de im
 - **ID:** T-80
 - **Tipo:** Test
 - **Descrição:** Verificar semântica, teclado e scanner nos estados principais.
-- **Critérios de aceite:** Idle/loading/vazio/sucesso/parcial/erro passam regras WCAG 2.2 A/AA e anteriores aplicáveis sem violações detectadas. Verificar labels, foco, regiões de status e recuperação por teclado; automação não comprova anúncio percebido nem conformidade integral.
+- **Critérios de aceite:** Playwright executa scanner separadamente em idle/loading/vazio/sucesso/parcial/erro com regras WCAG 2.2 A/AA e anteriores aplicáveis; array de violações é vazio em todos. Assertions verificam nomes acessíveis, foco permanecendo na busca e recuperação acionável por Tab/Enter, com callback/requisição esperada. Relatório lista estado e resultado; não declara conformidade integral nem anúncio percebido.
 - **Dependências:** T-55, T-57, T-58, T-64, T-79.
 - **Arquivos prováveis:** `tests/e2e/accessibility.spec.ts`.
 - **Rastreabilidade:** EC-29; RNF-02.
@@ -841,7 +850,7 @@ Tarefas E2E consomem componentes e dados prontos; não incluem correções de im
 - **ID:** T-81
 - **Tipo:** Test
 - **Descrição:** Executar matriz parametrizada de responsividade.
-- **Critérios de aceite:** Em 320/390/768/1366/1920 CSS px, sucesso/loading/vazio/parcial/erro não causam overflow e controles/nomes longos permanecem acessíveis. Busca, unidade, localização e recuperação funcionam sem hover; 390 × 844 exercita toque. Corrigir produto exige unidade separada.
+- **Critérios de aceite:** Playwright verifica as 25 combinações de larguras 320/390/768/1366/1920 CSS px e estados sucesso/loading/vazio/parcial/erro: `document.documentElement.scrollWidth <= window.innerWidth`. Nomes longos ficam dentro da largura do container sem truncar a identificação; controles dos fluxos ficam visíveis após rolagem vertical e acionáveis. Em 390 × 844, busca/unidade/localização/recuperação são acionadas por toque sem hover e produzem o resultado esperado. Correção de produto exige tarefa separada.
 - **Dependências:** T-55, T-56, T-57, T-58, T-64.
 - **Arquivos prováveis:** `tests/e2e/responsive.spec.ts`.
 - **Rastreabilidade:** RNF-01, RNF-02.
@@ -851,7 +860,7 @@ Tarefas E2E consomem componentes e dados prontos; não incluem correções de im
 - **ID:** T-82
 - **Tipo:** Infra
 - **Descrição:** Executar os gates existentes e projetos declarados num workflow.
-- **Critérios de aceite:** CI instala três engines/dependências e executa `pnpm lint`, `pnpm check`, `pnpm build`, `pnpm test`, `pnpm test:e2e`, nessa ordem compatível com preview. Relatório identifica desktop/mobile e falhas originais sem mascará-las por retry/skip; artefatos sintéticos têm retenção definida.
+- **Critérios de aceite:** Execução identificada da CI instala Chromium/Firefox/WebKit e dependências do sistema; cada comando `pnpm lint`, `pnpm check`, `pnpm build`, `pnpm test`, `pnpm test:e2e` encerra com código 0 e build precede E2E. Relatório contém os cinco projetos de T-62 e cenários previstos, sem skip tratado como cobertura; falha inicial/flaky permanece registrada, não vira aprovação por retry. Workflow declara retenção dos artefatos e somente dados sintéticos são capturados.
 - **Dependências:** T-59, T-60, T-65, T-66, T-67, T-68, T-69, T-70, T-71, T-72, T-73, T-74, T-75, T-76, T-77, T-78, T-80, T-81.
 - **Arquivos prováveis:** `.github/workflows/ci.yml`.
 - **Rastreabilidade:** RNF-04, RNF-06, RNF-07; gate de merge do plano.
@@ -865,7 +874,7 @@ Não presumir aprovação pela existência dos scripts. Esta entrega registra ex
 - **ID:** T-83
 - **Tipo:** Test
 - **Descrição:** Instrumentar acionamento até commit visual utilizável no build de produção.
-- **Critérios de aceite:** Medidor consome fixtures dez cidades/cinco dias e entrega após 500 ms; controla 10 Mbps bidirecional/100 ms adicionais, mobile 390 × 844/CPU 4× e desktop 1366 × 768 sem desaceleração. Comprovar throttling efetivo; se route o contornar, usar transporte de fixture limitado no segundo arquivo. Saída inclui amostras brutas e grupos de falha separados, não apenas médias.
+- **Critérios de aceite:** Execução de controle registra acionamento e commit visual utilizável, duração não negativa, operação/perfil/resultado e configuração aplicada. Respostas têm 10 cidades/5 dias e atraso de entrega de 500 ms; perfis aplicam 10 Mbps bidirecional/100 ms adicionais, mobile 390 × 844/CPU 4× e desktop 1366 × 768 sem desaceleração. Comparação instrumentada de transferência limitada/não limitada demonstra aplicação de rede; rota que ignore limitação reprova o medidor até usar transporte limitado. Saída separa sucessos, parciais, erros e timeouts com amostras brutas.
 - **Dependências:** T-55, T-64.
 - **Arquivos prováveis:** `tests/e2e/performance.spec.ts`, `tests/fixtures/performanceTransport.ts`.
 - **Rastreabilidade:** RNF-03.
@@ -885,7 +894,7 @@ Não presumir aprovação pela existência dos scripts. Esta entrega registra ex
 - **ID:** T-85
 - **Tipo:** Test
 - **Descrição:** Criar jornada real com cidade pública fixa, fora da suíte de PR.
-- **Critérios de aceite:** Configuração exclusiva sem interceptação de geocoding/forecast executa busca, seleção e previsão nos perfis desktop/mobile. Verificar CORS, campos/unidades/fuso, não valores fixos; sem localização pessoal, p95 controlado ou retry que esconda falha.
+- **Critérios de aceite:** Execução exclusiva fora da suíte de PR faz uma busca por cidade pública fixa, exige seleção e lê forecast real por perfil desktop/mobile. Zero rotas interceptam os endpoints; JSON acessível via CORS contém campos/unidades/fuso necessários e UI apresenta dados utilizáveis correspondentes. Não exigir temperatura fixa, usar localização pessoal ou incluir resultado no p95 controlado; falha é registrada sem retry mascarado.
 - **Dependências:** T-54, T-62.
 - **Arquivos prováveis:** `tests/live/openMeteo.spec.ts`, `playwright.live.config.ts`.
 - **Rastreabilidade:** RF-01 a RF-03; RNF-03, RNF-04.
@@ -895,7 +904,7 @@ Não presumir aprovação pela existência dos scripts. Esta entrega registra ex
 - **ID:** T-86
 - **Tipo:** Test
 - **Descrição:** Executar smoke live e registrar resultado/latência.
-- **Critérios de aceite:** Desktop/mobile possuem data, versões, resultado e evidência da jornada completa. Falha externa registra “integração não validada” até nova execução bem-sucedida, preservando histórico; execução real não integra amostra p95.
+- **Critérios de aceite:** Registro contém uma execução completa por perfil desktop/mobile com cidade pública fixa, data, versões, comando, resultado, latência e link para evidência de busca/seleção/forecast legíveis via CORS. Aprovação exige os campos/unidades/fuso e apresentação utilizável previstos em T-85; falha externa registra “integração não validada”, preservando histórico até nova execução bem-sucedida. Nenhuma amostra é somada ao p95 controlado.
 - **Dependências:** T-85.
 - **Arquivos prováveis:** `tests/acceptance/live-integration.md`.
 - **Rastreabilidade:** RNF-03, RNF-04.
@@ -905,7 +914,7 @@ Não presumir aprovação pela existência dos scripts. Esta entrega registra ex
 - **ID:** T-87
 - **Tipo:** Test
 - **Descrição:** Executar inspeção manual sem leitor de tela.
-- **Critérios de aceite:** Registrar critérios WCAG aplicáveis, contraste, foco, labels, operação por teclado, zoom 200% e reflow 320 CSS px nos fluxos completos. Resultado por critério inclui passos/evidência; falha aplicável impede aceite.
+- **Critérios de aceite:** Evidência lista IDs WCAG 2.2 A/AA aplicáveis, passos e resultado por critério nos fluxos completos, com justificativa para não aplicáveis. Contraste medido atende 4,5:1 para texto normal, 3:1 para texto grande e 3:1 para informação visual de controles/foco quando exigido. Tab/Shift+Tab/Enter/Espaço operam controles sem armadilha; foco é visível/não encoberto. Zoom 200% e largura 320 CSS px mantêm conteúdo/ações sem perda ou rolagem horizontal da página. Falha aplicável impede aceite.
 - **Dependências:** T-55, T-56, T-57, T-58.
 - **Arquivos prováveis:** `tests/acceptance/accessibility.md`.
 - **Rastreabilidade:** RNF-01, RNF-02.
@@ -915,7 +924,7 @@ Não presumir aprovação pela existência dos scripts. Esta entrega registra ex
 - **ID:** T-88
 - **Tipo:** Test
 - **Descrição:** Executar fluxos com NVDA/Chrome no Windows.
-- **Critérios de aceite:** Registrar versões e critérios assistivos aplicáveis; loading/vazio/erro são percebidos uma vez, foco da busca permanece e recuperação é alcançável por teclado. Consultar clima/previsão/controles sem depender de ícones. Ambiente indisponível mantém pendência.
+- **Critérios de aceite:** Com NVDA/Chrome no Windows e foco na busca, registrar transcrição/observação do anúncio uma vez ao iniciar loading e uma vez ao concluir vazio ou erro, em cenários separados de EC-29. Foco continua no campo; Tab alcança recuperação, Enter a aciona, respeitando bloqueio. Leitura identifica cidade, valores/unidades, datas e nomes/estados dos controles sem ícones. Registrar versões, IDs WCAG e resultado por passo; ambiente indisponível mantém pendência.
 - **Dependências:** T-55, T-56, T-57, T-58.
 - **Arquivos prováveis:** `tests/acceptance/accessibility.md`.
 - **Rastreabilidade:** EC-29; RNF-02.
@@ -925,7 +934,7 @@ Não presumir aprovação pela existência dos scripts. Esta entrega registra ex
 - **ID:** T-89
 - **Tipo:** Test
 - **Descrição:** Executar fluxos com VoiceOver/Safari no iOS.
-- **Critérios de aceite:** Registrar versões e critérios assistivos aplicáveis; anúncios/foco/recuperação e leitura de dados/controles funcionam no dispositivo real. Evidência distingue resultado percebido de DOM correto; indisponibilidade/falha não conta como aprovação.
+- **Critérios de aceite:** Repetir no VoiceOver/Safari iOS real os resultados de EC-29: um anúncio no início e um na conclusão vazio/erro, foco mantido, recuperação alcançável/acionável e bloqueio respeitado. Registrar leitura percebida de cidade, valores/unidades, cinco datas e nomes/estados dos controles, versões e IDs WCAG por passo. DOM correto sem anúncio percebido não aprova; indisponibilidade/falha mantém pendência.
 - **Dependências:** T-55, T-56, T-57, T-58.
 - **Arquivos prováveis:** `tests/acceptance/accessibility.md`.
 - **Rastreabilidade:** EC-29; RNF-02, RNF-07.
@@ -935,7 +944,7 @@ Não presumir aprovação pela existência dos scripts. Esta entrega registra ex
 - **ID:** T-90
 - **Tipo:** Test
 - **Descrição:** Executar a mesma jornada parametrizada em Chrome/Edge/Firefox no Windows 11.
-- **Critérios de aceite:** Registrar versões estáveis na data e resultado por navegador: busca/seleção, clima, unidade, localização, preferências e recuperação. Falha identifica navegador/passos; não substituir execução real por engine da CI.
+- **Critérios de aceite:** Em Chrome/Edge/Firefox estáveis no Windows 11, registrar versão/data e saída de cada passo: cidade selecionada corresponde à consultada; atuais/cinco dias correspondem à resposta; unidade muda sem request; localização só após clique (ou recusa mantém busca); reabertura restaura preferências sem rede até confirmação; erro permite retry manual bem-sucedido. Cada navegador tem evidência própria e nenhum passo com falha/sem execução é aprovado; engine da CI não substitui navegador real.
 - **Dependências:** T-55, T-56, T-57, T-58.
 - **Arquivos prováveis:** `tests/acceptance/compatibility.md`.
 - **Rastreabilidade:** RNF-07; RF-01 a RF-08.
@@ -945,7 +954,7 @@ Não presumir aprovação pela existência dos scripts. Esta entrega registra ex
 - **ID:** T-91
 - **Tipo:** Test
 - **Descrição:** Executar jornada de compatibilidade no Safari real desktop.
-- **Critérios de aceite:** Registrar versão estável, sistema e resultados dos mesmos fluxos de T-90, incluindo layout/foco. WebKit emulado não serve como evidência; ausência do ambiente deixa pendência.
+- **Critérios de aceite:** No Safari estável real do macOS, registrar versão/sistema/data e resultado observado versus esperado para cada passo enumerado nos critérios de T-90, sem exigir executar T-90 como pré-requisito. Em 1366 CSS px não há overflow horizontal; teclado alcança controles com foco visível. Todos os passos devem passar; WebKit emulado ou ambiente ausente não aprova.
 - **Dependências:** T-55, T-56, T-57, T-58.
 - **Arquivos prováveis:** `tests/acceptance/compatibility.md`.
 - **Rastreabilidade:** RNF-01, RNF-07.
@@ -955,7 +964,7 @@ Não presumir aprovação pela existência dos scripts. Esta entrega registra ex
 - **ID:** T-92
 - **Tipo:** Test
 - **Descrição:** Executar a jornada parametrizada em Safari/iOS e Chrome/Android.
-- **Critérios de aceite:** Registrar dispositivo/sistema/versão estável e resultado por perfil dos fluxos de T-90. Toque, teclado virtual, layout e recuperação funcionam sem hover; emulação não substitui evidência real.
+- **Critérios de aceite:** Em Safari/iOS e Chrome/Android reais, registrar dispositivo/sistema/versão/data e resultado de cada passo enumerado nos critérios de T-90. Por perfil, toque aciona controles sem hover, teclado virtual permite digitar/enviar busca e, após fechá-lo, resultados/recuperação permanecem alcançáveis por rolagem vertical, sem overflow horizontal. Todos os passos passam em ambos; emulação não substitui execução.
 - **Dependências:** T-55, T-56, T-57, T-58.
 - **Arquivos prováveis:** `tests/acceptance/compatibility.md`.
 - **Rastreabilidade:** RNF-01, RNF-07.
@@ -969,7 +978,7 @@ As decisões operacionais não bloqueiam desenvolver o MVP. Não escolher hosped
 - **ID:** T-93
 - **Tipo:** Infra
 - **Descrição:** Executar `pnpm audit --prod` e triar resultado, sem corrigir código nesta unidade.
-- **Critérios de aceite:** Registrar data, comando, resultado e ação para cada achado; base inacessível deixa pendência. Alta/crítica não resolvida bloqueia publicação até decisão documentada. Correções necessárias viram tarefas próprias por dependência, com nova auditoria e gates afetados.
+- **Critérios de aceite:** Registro contém data, versão do lockfile, comando `pnpm audit --prod`, código de saída e relatório obtido. Cada achado tem pacote, advisory, severidade, ação/responsável e estado; relatório sem achados é explicitamente identificado. Consulta inacessível é “não validada”, não zero vulnerabilidades. Alta/crítica não resolvida bloqueia publicação até decisão documentada; correções são tarefas próprias com nova auditoria/gates afetados.
 - **Dependências:** T-79, T-82.
 - **Arquivos prováveis:** `tests/acceptance/dependencies.md`.
 - **Rastreabilidade:** RNF-06; checklist de publicação.
@@ -979,7 +988,7 @@ As decisões operacionais não bloqueiam desenvolver o MVP. Não escolher hosped
 - **ID:** T-94
 - **Tipo:** Infra
 - **Descrição:** Registrar condições atuais de uso, atribuição e dados externos.
-- **Critérios de aceite:** Evidenciar uso não comercial, limites, licença, destinatários e possível retenção de coordenadas pelo provedor. Reconfirmar campos obrigatórios; remoção estrutural bloqueia entrega até revisão. Chave/uso comercial exige revisão de escopo, nunca segredo no bundle.
+- **Critérios de aceite:** Registro cita URL oficial e data de consulta para uso não comercial, limites, licença/atribuição, destinatários e retenção de coordenadas. Cada variável obrigatória current/daily do contrato da spec é confrontada com documentação/resposta pública de referência, com resultado explícito de suporte/unidade. Remoção estrutural ou uso que exija chave/comercial fica como bloqueio para revisão de escopo; não inserir segredo no cliente.
 - **Dependências:** nenhuma.
 - **Arquivos prováveis:** `docs/publication-checklist.md`.
 - **Rastreabilidade:** CA-02.3; RNF-06; Assumptions e checklist de publicação.
@@ -989,7 +998,7 @@ As decisões operacionais não bloqueiam desenvolver o MVP. Não escolher hosped
 - **ID:** T-95
 - **Tipo:** Infra
 - **Descrição:** Obter decisões dos responsáveis, sem implementar infraestrutura de produção.
-- **Critérios de aceite:** Registrar hospedagem HTTPS, responsáveis por publicação/suporte/incidentes, rollback e monitoramento sintético sem localização pessoal. Identificar caminho concreto da configuração de headers para T-97. Ausência de decisão mantém tarefa aberta; sem SLA implícito.
+- **Critérios de aceite:** Responsáveis aprovam registro com destino de hospedagem/URL HTTPS, papéis de publicação/suporte/incidentes, passos de rollback para versão anterior e procedimento de monitoramento sintético usando cidade pública fixa, sem coordenada pessoal. Caminho concreto de configuração de headers é identificado para T-97. Cada item tem decisão/data e responsável; item sem decisão mantém tarefa aberta, sem SLA implícito.
 - **Dependências:** nenhuma; obter decisões dos responsáveis.
 - **Arquivos prováveis:** `docs/publication-checklist.md`.
 - **Rastreabilidade:** RNF-04; Out of Scope e checklist de publicação.
@@ -999,7 +1008,7 @@ As decisões operacionais não bloqueiam desenvolver o MVP. Não escolher hosped
 - **ID:** T-96
 - **Tipo:** Infra
 - **Descrição:** Confirmar retenção/acesso dos logs e informações de privacidade operacionais.
-- **Critérios de aceite:** Evidência identifica quais logs a hospedagem mantém, prazo, acesso e destinatários externos junto aos do provedor. Não prometer exclusão/ausência de logs de terceiros; lacunas ficam explícitas e bloqueiam conclusão.
+- **Critérios de aceite:** Tabela por hospedagem/provedor informa categorias de dados nos logs, retenção, quem acessa, destinatários e fonte/data da confirmação. Política de retenção/acesso da hospedagem tem aprovação do responsável; referência do provedor não promete exclusão que ele não garanta. Campo desconhecido é pendência explícita e impede concluir esta tarefa.
 - **Dependências:** T-94, T-95.
 - **Arquivos prováveis:** `docs/publication-checklist.md`.
 - **Rastreabilidade:** RNF-06; checklist de publicação.
@@ -1009,7 +1018,7 @@ As decisões operacionais não bloqueiam desenvolver o MVP. Não escolher hosped
 - **ID:** T-97
 - **Tipo:** Infra
 - **Descrição:** Configurar uma política de segurança coesa na hospedagem definida.
-- **Critérios de aceite:** Destino HTTPS real demonstra CSP limitada a recursos próprios/dois hosts oficiais necessários, proibição de enquadramento, `Referrer-Policy: no-referrer` e geolocalização restrita à própria origem. Busca/forecast/localização funcionam, sem conteúdo misto; registrar respostas e resultado, não apenas preview local.
+- **Critérios de aceite:** Captura de resposta do destino HTTPS real contém CSP aplicada (não apenas Report-Only), `connect-src` limitado à própria origem e `https://geocoding-api.open-meteo.com`/`https://api.open-meteo.com`, `frame-ancestors 'none'`, `Referrer-Policy: no-referrer` e `Permissions-Policy: geolocation=(self)`. Recursos são próprios conforme plano, sem conteúdo misto; teste em iframe de outra origem é bloqueado. Busca/forecast/localização completam sem violação da política; registrar URL/data, headers e resultados. Preview local não aprova.
 - **Dependências:** T-55, T-57, T-95.
 - **Arquivos prováveis:** um arquivo de configuração de headers identificado em T-95; `docs/publication-checklist.md`.
 - **Rastreabilidade:** RNF-06; checklist de publicação.
@@ -1019,7 +1028,7 @@ As decisões operacionais não bloqueiam desenvolver o MVP. Não escolher hosped
 - **ID:** T-98
 - **Tipo:** Test
 - **Descrição:** Referenciar evidências existentes sem adicionar testes ou corrigir produto.
-- **Critérios de aceite:** Cada CA/EC possui teste/procedimento e resultado; cada RNF aponta evidência pertinente. CI, quatro grupos p95, smoke live, acessibilidade e compatibilidade reais foram demonstrados. Falha/skip/ambiente ausente impede aceite completo; ausência estrutural de campo exige revisão, não placeholder permanente.
+- **Critérios de aceite:** Matriz contém uma linha por cada um dos 26 CA, 44 EC e 7 RNFs da spec, com teste/procedimento responsável, cenário/alternativas exercitados, link de evidência e resultado. Links resolvem para execuções/registros identificados: CI, quatro grupos p95, dois perfis live, critérios assistivos e matriz real de navegadores. Somente aprovação de todas as linhas permite marcar aceite completo; falha/skip/ambiente ausente é pendência. Ausência estrutural de campo é bloqueio contratual, não aprovação parcial permanente.
 - **Dependências:** T-82, T-84, T-86, T-87, T-88, T-89, T-90, T-91, T-92.
 - **Arquivos prováveis:** `tests/acceptance/coverage.md`.
 - **Rastreabilidade:** RF-01 a RF-08; RNF-01 a RNF-07; todos os CA/EC.
@@ -1029,7 +1038,7 @@ As decisões operacionais não bloqueiam desenvolver o MVP. Não escolher hosped
 - **ID:** T-99
 - **Tipo:** Infra
 - **Descrição:** Confrontar aceite, auditoria e checklist operacional com os responsáveis.
-- **Critérios de aceite:** Referenciar evidências de aceite, auditoria, termos/logs/headers; nenhum critério obrigatório ou falha de segurança pendente é aprovado implicitamente. Registrar decisão e bloqueios dos responsáveis; conclusão não equivale a deploy, SLA ou ampliação de escopo.
+- **Critérios de aceite:** Checklist contém links/resultados de T-93/T-94/T-95/T-96/T-97/T-98 e decisão datada dos responsáveis. Resultado “pronto” só é permitido com aceite integral, termos/operação/logs/headers confirmados e nenhum bloqueio de segurança ou critério obrigatório pendente. Se houver pendência, resultado é “não pronto”, com item, responsável e ação; isso não conclui o gate de publicação como aprovado. Registro não executa deploy nem declara SLA.
 - **Dependências:** T-93, T-96, T-97, T-98.
 - **Arquivos prováveis:** `docs/publication-checklist.md`.
 - **Rastreabilidade:** RNF-04, RNF-06; checklist de publicação.
