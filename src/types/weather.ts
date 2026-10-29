@@ -61,6 +61,9 @@ export interface CurrentWeather {
   weatherCode: WeatherCode | null;
   relativeHumidityPct: number | null;
   windSpeedKmh: number | null;
+  precipitationMm: number | null;
+  // Pressão reduzida ao nível do mar, não pressão de superfície.
+  pressureMslHpa: number | null;
   // Referência do dado do modelo, não medição observada nem conclusão da consulta.
   referenceTimeMs: EpochMs | null;
 }

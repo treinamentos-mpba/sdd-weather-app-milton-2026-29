@@ -24,6 +24,8 @@ export const mockWeatherData: WeatherData = {
     weatherCode: 2,
     relativeHumidityPct: 72,
     windSpeedKmh: 18.5,
+    precipitationMm: 0.4,
+    pressureMslHpa: 1013,
     referenceTimeMs: Date.parse('2026-10-29T14:00:00-03:00'),
   },
   forecast: [

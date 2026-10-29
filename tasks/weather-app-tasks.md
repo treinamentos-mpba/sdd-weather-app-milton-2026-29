@@ -122,7 +122,7 @@ Cada ID aparece em uma única fatia; tarefas de fatias anteriores são reutiliza
 - **Descrição:** Derivar apresentação pt-BR a partir de Celsius sem estado adicional.
 - **Critérios de aceite:** Vitest compara 0 °C → 32 °F, 100 °C → 212 °F e −40 °C → −40 °F; `null` continua indisponível. De 12,34 °C, dez alternâncias terminando em Celsius mostram 12,3 °C e em Fahrenheit mostram 54,2 °F. Em Celsius, −1,25/1,25/−0,04 resultam em −1,3/1,3/0, respectivamente, com vírgula pt-BR, até uma decimal e sem −0.
 - **Dependências:** T-01.
-- **Arquivos prováveis:** `src/lib/units.ts`, `tests/unit/units.test.ts`.
+- **Arquivos prováveis:** `src/lib/temperature.ts`, `tests/unit/units.test.ts`.
 - **Rastreabilidade:** CA-04.1 a CA-04.4; EC-21, EC-34; RNF-05.
 
 ### T-05 — Operar datas de calendário local
@@ -180,7 +180,7 @@ Cada ID aparece em uma única fatia; tarefas de fatias anteriores são reutiliza
 - **ID:** T-10
 - **Tipo:** Data
 - **Descrição:** Transformar seção atual e unidades externas em `CurrentWeather`.
-- **Critérios de aceite:** Vitest invalida apenas campos com unidade/domínio incompatível; preserva zero e variáveis válidas. Seção sem campo meteorológico válido resulta em `null`, mesmo contendo horário. Referência usa T-06, não relógio implícito.
+- **Critérios de aceite:** Vitest invalida apenas campos com unidade/domínio incompatível; preserva zero e variáveis válidas. `current.precipitation` em mm vira `precipitationMm`, aceitando zero e rejeitando negativos; `current.pressure_msl` em hPa vira `pressureMslHpa`, aceitando apenas positivos finitos. Ausência ou unidade incompatível nesses campos gera `null` sem invalidar os demais. Seção sem campo meteorológico válido resulta em `null`, mesmo contendo horário. Referência usa T-06, não relógio implícito.
 - **Dependências:** T-06, T-08, T-09.
 - **Arquivos prováveis:** `src/lib/normalizeWeather.ts`, `tests/unit/normalizeCurrent.test.ts`.
 - **Rastreabilidade:** CA-02.1, CA-02.2; EC-10, EC-11, EC-13, EC-14, EC-36.
@@ -272,7 +272,7 @@ Cada ID aparece em uma única fatia; tarefas de fatias anteriores são reutiliza
 - **ID:** T-19
 - **Tipo:** Data
 - **Descrição:** Obter atuais e cinco dias numa chamada e normalizar a resposta.
-- **Critérios de aceite:** Mock compara endpoint e cada parâmetro `current`/`daily` ao External APIs do plano, com `forecast_days=5`, `timezone=auto`, `temperature_unit=celsius`, `wind_speed_unit=kmh`, `timeformat=iso8601`. Sem mockar normalizador, fixture completa retorna campos esperados, parcial retorna `partial: true` e ambas as seções inutilizáveis retornam `invalid-response`. Local mantém alvo solicitado mesmo com grade diferente; sinal cancelado/deadline vencido impede retorno utilizável. Horário definitivo de conclusão só é confirmado pelo controlador vigente.
+- **Critérios de aceite:** Mock compara endpoint e cada parâmetro `current`/`daily` ao External APIs do plano, incluindo `precipitation`/`pressure_msl` em `current`, com `forecast_days=5`, `timezone=auto`, `temperature_unit=celsius`, `wind_speed_unit=kmh`, `precipitation_unit=mm`, `timeformat=iso8601`. Sem mockar normalizador, fixture completa retorna campos esperados, parcial retorna `partial: true` e ambas as seções inutilizáveis retornam `invalid-response`. Local mantém alvo solicitado mesmo com grade diferente; sinal cancelado/deadline vencido impede retorno utilizável. Horário definitivo de conclusão só é confirmado pelo controlador vigente.
 - **Dependências:** T-12, T-15, T-17.
 - **Arquivos prováveis:** `src/services/forecast.ts`, `tests/unit/forecast.test.ts`.
 - **Rastreabilidade:** CA-01.3, CA-02.1, CA-03.2, CA-08.1; EC-07, EC-43.
@@ -546,9 +546,9 @@ Cada ID aparece em uma única fatia; tarefas de fatias anteriores são reutiliza
 - **ID:** T-46
 - **Tipo:** UI
 - **Descrição:** Renderizar valores atuais normalizados, identidade e informação temporal.
-- **Critérios de aceite:** Testing Library com valores de CA-02.1 encontra 20 °C, sensação 18 °C, céu limpo, 60% e 10 km/h, com cidade identificada. Zero é exibido como zero e `null` como “Sem dados”. Casos separados encontram rótulos de conclusão/referência, “Desatualizado”, “Atualidade desconhecida” e “Não atualizados”; fuso inválido exibe UTC e aviso. Componentes recebem tempo/estado por props, sem leitura direta de relógio/rede.
+- **Critérios de aceite:** Testing Library com valores de CA-02.1 encontra 20 °C, sensação 18 °C, céu limpo, 60%, 10 km/h, precipitação 0,4 mm e pressão ao nível do mar 1013 hPa, com cidade identificada. Hero usa `lib/weatherCodes` para ícone/condição e `lib/temperature` para temperatura/sensação; rerender de unit converte só temperaturas. Zero é exibido como zero e `null` como “Sem dados”. Casos separados encontram rótulos de conclusão/referência, “Desatualizado”, “Atualidade desconhecida” e “Não atualizados”; fuso inválido exibe UTC e aviso. Componentes recebem tempo/estado por props, sem leitura direta de relógio/rede.
 - **Dependências:** T-04, T-07, T-08, T-40.
-- **Arquivos prováveis:** `src/components/CurrentWeatherCard.tsx`, `tests/components/CurrentWeatherCard.test.tsx`.
+- **Arquivos prováveis:** `src/components/CurrentWeather.tsx`, `tests/unit/CurrentWeather.test.tsx`.
 - **Rastreabilidade:** CA-02.1, CA-02.2, CA-08.2; EC-10, EC-11, EC-14, EC-19, EC-25, EC-27, EC-28, EC-43.
 
 ### T-47 — Apresentar um dia de previsão
@@ -558,7 +558,7 @@ Cada ID aparece em uma única fatia; tarefas de fatias anteriores são reutiliza
 - **Descrição:** Renderizar data recebida e seis campos de um `ForecastDay`.
 - **Critérios de aceite:** Testing Library compara os seis campos às props: condição, mínima/máxima na unidade ativa, probabilidade máxima 70%, umidade média 65% e vento máximo 20 km/h no exemplo EC-40. `null` é “Sem dados”; textos não dizem rajada ou volume. Data local `2026-10-29` continua 29/10 mesmo com dispositivo no dia seguinte.
 - **Dependências:** T-04, T-05, T-08, T-40.
-- **Arquivos prováveis:** `src/components/ForecastDayCard.tsx`, `tests/components/ForecastDayCard.test.tsx`.
+- **Arquivos prováveis:** `src/components/ForecastCard.tsx`, `tests/unit/ForecastCard.test.tsx`.
 - **Rastreabilidade:** CA-03.2; EC-10, EC-11, EC-14, EC-40.
 
 ### T-48 — Compor seções meteorológicas
@@ -570,6 +570,8 @@ Cada ID aparece em uma única fatia; tarefas de fatias anteriores são reutiliza
 - **Dependências:** T-07, T-46, T-47.
 - **Arquivos prováveis:** `src/components/WeatherPanel.tsx`, `tests/components/WeatherPanel.test.tsx`.
 - **Rastreabilidade:** CA-03.1, CA-03.3; EC-12, EC-20, EC-31, EC-36, EC-43.
+
+Implementação incremental de T-47/T-48: `lib/format.ts` formata datas locais absolutas; `ForecastList.tsx` compõe os cards recebidos no grid `grid-cols-2 sm:grid-cols-3 lg:grid-cols-5`, preservando datas/ordem e sinalizando lista vazia. Testes focados em `tests/unit/format.test.ts` e `tests/unit/ForecastList.test.tsx` verificam rótulos, cinco cards, conversão e dados ausentes. Essa entrega não conclui a composição de atuais nem os avisos temporais de `WeatherPanel`.
 
 ### T-49 — Apresentar atribuição meteorológica
 

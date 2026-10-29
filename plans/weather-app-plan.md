@@ -86,8 +86,9 @@ src/
     TemperatureToggle.tsx
     PreferencesPanel.tsx
     WeatherPanel.tsx
-    CurrentWeatherCard.tsx
-    ForecastDayCard.tsx
+    CurrentWeather.tsx
+    ForecastCard.tsx
+    ForecastList.tsx
     QueryFeedback.tsx
     WeatherAttribution.tsx
   hooks/
@@ -107,7 +108,8 @@ src/
     validation.ts
     normalizeWeather.ts
     dates.ts
-    units.ts
+    temperature.ts
+    format.ts
     weatherCodes.ts
 tests/
   unit/
@@ -125,11 +127,13 @@ tests/
 | `services/geocoding.ts`, `forecast.ts` | Parâmetros e interpretação dos contratos externos, usando validação/normalização de `lib/`. |
 | `services/geolocation.ts`, `preferences.ts` | Acesso exclusivo às APIs do navegador, falhas explícitas e armazenamento mínimo. |
 | `lib/validation.ts`, `normalizeWeather.ts` | Validação de estruturas/domínios e transformação pura do JSON em modelo interno. |
-| `lib/dates.ts`, `units.ts`, `weatherCodes.ts` | Calendário/fusos e atualidade com `now` fornecido; conversão/arredondamento; mapeamento WMO. |
+| `lib/dates.ts`, `temperature.ts`, `weatherCodes.ts` | Calendário/fusos e atualidade com `now` fornecido; conversão/arredondamento; mapeamento WMO. |
 | `types/` | Contratos de clima, falhas e estado, sem dependências executáveis. |
 | `App.tsx`, `main.tsx`, `index.css` | Composição, inicialização e estilos globais mínimos, respectivamente. |
 
 Um componente por arquivo. Relógio e chamadas são fornecidos nos pontos de efeito para controle nos testes. A árvore é um mapa de responsabilidades, não uma exigência de criar arquivos vazios: dividir apenas módulos com responsabilidade concreta. Nenhuma pasta `utils/` paralela a `lib/`, evitando dois destinos para as mesmas regras puras. Não criar classes ou interfaces de infraestrutura sem consumidor concreto.
+
+`ForecastList` recebe `forecast: readonly ForecastDay[]` e `unit: Unit`, compondo um `ForecastCard` por data em `grid-cols-2 sm:grid-cols-3 lg:grid-cols-5`. Cada card recebe `day` e `unit`; `lib/format.ts` fornece o rótulo absoluto pt-BR (dia da semana e data completa) sem consultar relógio ou converter a data local para o fuso do dispositivo. A lista vazia informa seção indisponível, sem fabricar dias; a normalização continua responsável pelo contrato de cinco dias. Avisos de período anterior ficam na composição `WeatherPanel`.
 
 ## Data Model
 
@@ -173,6 +177,8 @@ interface CurrentWeather {
   weatherCode: WeatherCode | null; // current.weather_code reconhecido (WMO).
   relativeHumidityPct: number | null; // current.relative_humidity_2m, em %.
   windSpeedKmh: number | null; // current.wind_speed_10m, em km/h.
+  precipitationMm: number | null; // current.precipitation, em mm no intervalo atual.
+  pressureMslHpa: number | null; // current.pressure_msl, pressão ao nível do mar.
   referenceTimeMs: EpochMs | null; // current.time normalizado; não é medição de estação.
 }
 
@@ -214,7 +220,7 @@ Invariantes (RF-02/RF-03/RF-07/RF-08):
 - Temperaturas são Celsius de origem. Conversões e arredondamento ocorrem somente para apresentação. Código desconhecido vira condição indisponível e resposta parcial.
 - Conferir unidades recebidas; valores em unidades ausentes ou incompatíveis não são presumidos como Celsius/km/h. Invalidar os campos afetados e sinalizar parcial.
 - Arrays diários com tamanho diferente de `daily.time` invalidam somente a série afetada. Invalidar todas as posições de uma data duplicada; ignorar datas inválidas ou fora do período; não deslocar valores.
-- Porcentagens fora de 0–100, vento negativo e valores não finitos viram `null`. Zero e temperaturas negativas permanecem válidos. Não corrigir inconsistência entre mínima/máxima trocando os valores silenciosamente.
+- Porcentagens fora de 0–100, vento/precipitação negativos, pressão ao nível do mar menor ou igual a zero e valores não finitos viram `null`. Zero permanece válido para temperatura, porcentagens, vento e precipitação; temperaturas negativas também são válidas. Não corrigir inconsistência entre mínima/máxima trocando os valores silenciosamente.
 - Horário de sucesso é de resposta utilizável aceita pela intenção vigente. Consulta parcial nova substitui o snapshot da resposta anterior; não completar buracos com valores antigos.
 
 Contratos de falha e serviços:
@@ -377,19 +383,20 @@ Resposta ilustrativa resumida, com um resultado:
 | Parâmetro | Valor |
 |---|---|
 | `latitude`, `longitude` | Coordenadas do resultado selecionado ou do dispositivo, somente na requisição ao provedor. |
-| `current` | `temperature_2m,apparent_temperature,weather_code,relative_humidity_2m,wind_speed_10m`. |
+| `current` | `temperature_2m,apparent_temperature,weather_code,relative_humidity_2m,wind_speed_10m,precipitation,pressure_msl`. |
 | `daily` | `weather_code,temperature_2m_min,temperature_2m_max,precipitation_probability_max,relative_humidity_2m_mean,wind_speed_10m_max`. |
 | `forecast_days` | `5`. |
 | `timezone` | `auto`. |
 | `temperature_unit` | `celsius`. |
 | `wind_speed_unit` | `kmh`. |
+| `precipitation_unit` | `mm`. |
 | `timeformat` | `iso8601`: datas diárias mantidas como rótulos locais. |
 
 Origem: `current`, `current_units`, `daily`, `daily_units`, `timezone`. JSON externo é `unknown`; não expor DTO bruto nos componentes.
 
 Exemplo de URL para a cidade retornada pelo geocoding:
 
-`https://api.open-meteo.com/v1/forecast?latitude=52.52437&longitude=13.41053&current=temperature_2m,apparent_temperature,weather_code,relative_humidity_2m,wind_speed_10m&daily=weather_code,temperature_2m_min,temperature_2m_max,precipitation_probability_max,relative_humidity_2m_mean,wind_speed_10m_max&forecast_days=5&timezone=auto&temperature_unit=celsius&wind_speed_unit=kmh&timeformat=iso8601`
+`https://api.open-meteo.com/v1/forecast?latitude=52.52437&longitude=13.41053&current=temperature_2m,apparent_temperature,weather_code,relative_humidity_2m,wind_speed_10m,precipitation,pressure_msl&daily=weather_code,temperature_2m_min,temperature_2m_max,precipitation_probability_max,relative_humidity_2m_mean,wind_speed_10m_max&forecast_days=5&timezone=auto&temperature_unit=celsius&wind_speed_unit=kmh&precipitation_unit=mm&timeformat=iso8601`
 
 Resposta ilustrativa: demais metadados foram omitidos, mas os cinco dias e as unidades necessárias foram mantidos. Os valores não representam uma previsão real.
 
@@ -406,7 +413,9 @@ Resposta ilustrativa: demais metadados foram omitidos, mas os cinco dias e as un
     "apparent_temperature": "°C",
     "weather_code": "wmo code",
     "relative_humidity_2m": "%",
-    "wind_speed_10m": "km/h"
+    "wind_speed_10m": "km/h",
+    "precipitation": "mm",
+    "pressure_msl": "hPa"
   },
   "current": {
     "time": "2026-10-29T14:00",
@@ -415,7 +424,9 @@ Resposta ilustrativa: demais metadados foram omitidos, mas os cinco dias e as un
     "apparent_temperature": 10.1,
     "weather_code": 3,
     "relative_humidity_2m": 70,
-    "wind_speed_10m": 15
+    "wind_speed_10m": 15,
+    "precipitation": 0.4,
+    "pressure_msl": 1013
   },
   "daily_units": {
     "time": "iso8601",
@@ -445,6 +456,8 @@ Resposta ilustrativa: demais metadados foram omitidos, mas os cinco dias e as un
 | `current.weather_code` | `CurrentWeather.weatherCode` | Validar código WMO conhecido; desconhecido vira `null`. |
 | `current.relative_humidity_2m` | `CurrentWeather.relativeHumidityPct` | Número de 0 a 100; zero é válido. |
 | `current.wind_speed_10m` | `CurrentWeather.windSpeedKmh` | Velocidade não negativa em km/h. |
+| `current.precipitation` | `CurrentWeather.precipitationMm` | Valor finito não negativo em mm; zero válido, não probabilidade diária. |
+| `current.pressure_msl` | `CurrentWeather.pressureMslHpa` | Valor finito positivo em hPa; pressão ao nível do mar, não de superfície. |
 | `current.time` | `CurrentWeather.referenceTimeMs` | Resolver instante no fuso retornado conforme regra abaixo; `interval` não é idade nem horário de conclusão da consulta. |
 | `daily.time[i]` | `ForecastDay.date` | Data local válida; não converter para o fuso do dispositivo. |
 | `daily.weather_code[i]` | `ForecastDay.weatherCode` | Condição mais severa prevista para o dia, segundo o provedor. |
@@ -548,11 +561,11 @@ Invariantes do reducer e dos efeitos:
 
 ### Conversão derivada na renderização — RF-04
 
-Guardar apenas temperaturas de origem em Celsius e a preferência `Unit`. Componentes usam um helper puro de `lib/units.ts` ao renderizar: Celsius mantém o valor; Fahrenheit deriva `C × 9 / 5 + 32`. Converter também sensação térmica e mínimas/máximas. `null` continua indisponível e zero continua válido.
+Guardar apenas temperaturas de origem em Celsius e a preferência `Unit`. Componentes usam um helper puro de `lib/temperature.ts` ao renderizar: Celsius mantém o valor; Fahrenheit deriva `C × 9 / 5 + 32`. Converter também sensação térmica e mínimas/máximas. `null` continua indisponível e zero continua válido.
 
 Arredondar somente após conversão: até uma casa decimal, empate afastado de zero e sem zero negativo, com formatação pt-BR. Não guardar `temperatureF`, strings formatadas ou arrays convertidos em estado; não converter de volta a partir do valor já arredondado. Assim alternâncias não acumulam erro. `useMemo` só se houver custo observado, não por padrão.
 
-Selecionar unidade altera apresentação e preferência local, sem fetch, mudança de status da consulta, reinício de timeout ou alteração dos horários. Durante carregamento, a resposta aceita será renderizada na unidade vigente naquele momento, não na unidade capturada no início da chamada. Vento, umidade e precipitação não mudam. Referências: CA-04.1 a CA-04.4, EC-21/EC-30/EC-34/EC-44.
+Selecionar unidade altera apresentação e preferência local, sem fetch, mudança de status da consulta, reinício de timeout ou alteração dos horários. Durante carregamento, a resposta aceita será renderizada na unidade vigente naquele momento, não na unidade capturada no início da chamada. Vento, umidade, precipitação e pressão ao nível do mar não mudam. Referências: CA-04.1 a CA-04.4, EC-21/EC-30/EC-34/EC-44.
 
 ## Error Handling
 
@@ -606,7 +619,7 @@ Na etapa Tasks, cada CA/EC deve ter um teste ou procedimento manual responsável
 
 | Alvo | Casos obrigatórios | Resultado verificável |
 |---|---|---|
-| Conversão pura em `lib/units.ts` | 0 °C → 32 °F, 100 °C → 212 °F, −40 °C → −40 °F; `null`, zero, empates positivos/negativos e alternâncias repetidas. | Valores derivados do Celsius de origem; arredondamento da spec, sem zero negativo ou perda acumulada. |
+| Conversão pura em `lib/temperature.ts` | 0 °C → 32 °F, 100 °C → 212 °F, −40 °C → −40 °F; `null`, zero, empates positivos/negativos e alternâncias repetidas. | Valores derivados do Celsius de origem; arredondamento da spec, sem zero negativo ou perda acumulada. |
 | Demais funções de `lib/` | Cinco datas locais, DST/virada de ano, código WMO conhecido/desconhecido, unidade externa inválida, `null` versus zero e arrays desalinhados. | Dados normalizados e avisos esperados, sem dependência do fuso do processo ou criação de valores ausentes. |
 | Serviços com mock de `fetch` | Verificar URL/parâmetros/método e `redirect: 'error'`; respostas completas, vazias, parciais, JSON inválido, HTTP 400/500/429 e rejeição de rede/redirecionamento. | `Result` e classificação de erro corretos; encoding preservado, nenhuma falha transformada em lista vazia e nenhum dado pessoal em diagnóstico. Mock verifica opção de redirecionamento, não comprova comportamento do navegador. |
 | Transporte e timeout | Promessa pendente, relógio controlado em 9.999 ms e 10.000 ms, resposta tardia; `Retry-After` em segundos/data, passado, inválido ou inacessível. | Operação pendente antes do prazo, timeout no prazo, sem retry automático; bloqueio e liberação manuais do serviço correto. |
