@@ -4,7 +4,9 @@ import { isLocalDate } from './dates';
 const metricFormatter = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
 
 export function formatMetric(value: number | null, suffix: string): string {
-  return value === null ? 'Sem dados' : `${metricFormatter.format(value)} ${suffix}`;
+  return typeof value === 'number' && Number.isFinite(value)
+    ? `${metricFormatter.format(value)} ${suffix}`
+    : 'Sem dados';
 }
 
 const dayFormatter = new Intl.DateTimeFormat('pt-BR', {

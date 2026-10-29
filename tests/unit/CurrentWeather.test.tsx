@@ -108,4 +108,25 @@ describe('CurrentWeather', () => {
     expect(screen.getAllByText('Sem dados')).toHaveLength(4);
     expect(screen.queryByText(/°F/)).not.toBeInTheDocument();
   });
+
+  it('não deixa valores não finitos escaparem para o hero e as métricas', () => {
+    render(
+      <CurrentWeather
+        city={city}
+        unit="fahrenheit"
+        current={{
+          ...current,
+          temperatureC: Number.NaN,
+          apparentTemperatureC: Number.POSITIVE_INFINITY,
+          relativeHumidityPct: Number.NaN,
+          windSpeedKmh: Number.POSITIVE_INFINITY,
+          precipitationMm: Number.NaN,
+          pressureMslHpa: Number.NEGATIVE_INFINITY,
+        }}
+      />,
+    );
+    expect(screen.getByText('Sensação térmica: Sem dados')).toBeInTheDocument();
+    expect(screen.getAllByText('Sem dados', { exact: true })).toHaveLength(5);
+    expect(screen.getByRole('region')).not.toHaveTextContent(/NaN|undefined|Infinity|∞/);
+  });
 });

@@ -39,6 +39,19 @@ describe('temperature', () => {
     expect(unitLabel('fahrenheit')).toBe('°F');
   });
 
+  it.each([
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    Number.NEGATIVE_INFINITY,
+  ])('não apresenta temperatura não finita %s em nenhuma unidade', (value) => {
+    expect(formatTemperature(value, 'celsius')).toBe('Sem dados');
+    expect(formatTemperature(value, 'fahrenheit')).toBe('Sem dados');
+  });
+
+  it('não apresenta infinito quando a conversão para Fahrenheit excede o limite numérico', () => {
+    expect(formatTemperature(Number.MAX_VALUE, 'fahrenheit')).toBe('Sem dados');
+  });
+
   it('deriva alternâncias da origem sem acumular arredondamento', () => {
     for (let index = 0; index < 10; index++) {
       expect(formatTemperature(12.34, 'fahrenheit')).toBe('54,2 °F');

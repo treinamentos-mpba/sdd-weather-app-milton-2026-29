@@ -20,6 +20,24 @@ function expectMetric(label: string, value: string) {
 }
 
 describe('ForecastCard', () => {
+  it('não apresenta valores não finitos ou overflow na conversão', () => {
+    render(
+      <ForecastCard
+        day={{
+          ...day,
+          minTemperatureC: Number.NaN,
+          maxTemperatureC: Number.MAX_VALUE,
+          maxPrecipitationProbabilityPct: Number.NaN,
+          meanRelativeHumidityPct: Number.POSITIVE_INFINITY,
+          maxWindSpeedKmh: Number.NEGATIVE_INFINITY,
+        }}
+        unit="fahrenheit"
+      />,
+    );
+    expect(screen.getAllByText('Sem dados', { exact: true })).toHaveLength(5);
+    expect(screen.getByRole('article')).not.toHaveTextContent(/NaN|undefined|Infinity|∞/);
+  });
+
   it('exibe condição, unidades e converte apenas temperaturas', () => {
     const { rerender } = render(<ForecastCard day={day} unit="celsius" />);
     expect(screen.getByRole('article', { name: 'qui., 29/10/2026' })).toBeInTheDocument();

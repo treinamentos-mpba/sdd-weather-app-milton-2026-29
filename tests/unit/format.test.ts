@@ -28,6 +28,9 @@ describe('formatMetric', () => {
     [12.34, 'km/h', '12,3 km/h'],
     [1.25, 'mm', '1,3 mm'],
     [null, 'hPa', 'Sem dados'],
+    [Number.NaN, '%', 'Sem dados'],
+    [Number.POSITIVE_INFINITY, 'km/h', 'Sem dados'],
+    [Number.NEGATIVE_INFINITY, 'mm', 'Sem dados'],
   ])('formata %s com unidade %s e tratamento de ausência', (value, suffix, expected) => {
     expect(formatMetric(value, suffix)).toBe(expected);
   });

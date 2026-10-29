@@ -28,6 +28,90 @@ afterEach(() => {
 });
 
 describe('fetchWeather', () => {
+  it.each([
+    null,
+    undefined,
+  ])('normaliza cada campo atual nulo/ausente (%s) sem perder os demais', async (missing) => {
+    const fields = [
+      ['temperature_2m', 'temperatureC'],
+      ['apparent_temperature', 'apparentTemperatureC'],
+      ['weather_code', 'weatherCode'],
+      ['relative_humidity_2m', 'relativeHumidityPct'],
+      ['wind_speed_10m', 'windSpeedKmh'],
+      ['precipitation', 'precipitationMm'],
+      ['pressure_msl', 'pressureMslHpa'],
+      ['time', 'referenceTimeMs'],
+    ] as const;
+    for (const [external, internal] of fields) {
+      const body = forecastResponse();
+      mockResponse({ ...body, current: { ...body.current, [external]: missing } });
+      const data = success(await fetchWeather(forecastLocation, context()));
+      expect(data.current).toHaveProperty(internal, null);
+      expect(data.forecast).toHaveLength(5);
+      expect(data.forecast[0].maxTemperatureC).toBe(14);
+      expect(data.partial).toBe(true);
+    }
+  });
+
+  it.each([
+    null,
+    undefined,
+  ])('normaliza cada série diária nula/ausente (%s), preservando datas e outras séries', async (missing) => {
+    const fields = [
+      ['weather_code', 'weatherCode'],
+      ['temperature_2m_min', 'minTemperatureC'],
+      ['temperature_2m_max', 'maxTemperatureC'],
+      ['precipitation_probability_max', 'maxPrecipitationProbabilityPct'],
+      ['relative_humidity_2m_mean', 'meanRelativeHumidityPct'],
+      ['wind_speed_10m_max', 'maxWindSpeedKmh'],
+    ] as const;
+    for (const [external, internal] of fields) {
+      const body = forecastResponse();
+      mockResponse({ ...body, daily: { ...body.daily, [external]: missing } });
+      const data = success(await fetchWeather(forecastLocation, context()));
+      expect(data.forecast.map((day) => day.date)).toEqual(body.daily.time);
+      for (const day of data.forecast) expect(day).toHaveProperty(internal, null);
+      expect(data.current?.temperatureC).toBe(12.3);
+      expect(data.partial).toBe(true);
+    }
+  });
+
+  it.each([
+    null,
+    undefined,
+  ])('não fabrica período quando daily.time está nulo/ausente (%s)', async (missing) => {
+    const body = forecastResponse();
+    mockResponse({ ...body, daily: { ...body.daily, time: missing } });
+    const data = success(await fetchWeather(forecastLocation, context()));
+    expect(data.forecast).toEqual([]);
+    expect(data.periodStart).toBeNull();
+    expect(data.current?.temperatureC).toBe(12.3);
+    expect(data.partial).toBe(true);
+  });
+
+  it.each([
+    null,
+    undefined,
+  ])('preserva a seção utilizável quando metadados de unidade ou fuso faltam (%s)', async (missing) => {
+    for (const field of ['current_units', 'daily_units', 'timezone']) {
+      mockResponse({ ...forecastResponse(), [field]: missing });
+      const data = success(await fetchWeather(forecastLocation, context()));
+      expect(data.partial).toBe(true);
+      if (field === 'current_units') {
+        expect(data.current).toBeNull();
+        expect(data.forecast).toHaveLength(5);
+      } else {
+        expect(data.current?.temperatureC).toBe(12.3);
+        expect(data.forecast).toEqual([]);
+        expect(data.periodStart).toBeNull();
+      }
+      if (field === 'timezone') {
+        expect(data.timeZone).toBeNull();
+        expect(data.current?.referenceTimeMs).toBeNull();
+      }
+    }
+  });
+
   it('consulta current/daily, valida unidades e mapeia cinco dias sem perder o alvo', async () => {
     const fetchMock = mockResponse(forecastResponse());
     const data = success(await fetchWeather(forecastLocation, context()));
