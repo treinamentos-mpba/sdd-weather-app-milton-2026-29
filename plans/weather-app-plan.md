@@ -439,7 +439,11 @@ Atribuir Open-Meteo/CC BY 4.0 e GeoNames e manter aviso de estimativas conforme 
 
 ## State Management
 
-Estado em `useWeatherApp`, com `useReducer` e efeitos explícitos; componentes mantêm apenas detalhes visuais não compartilhados. Sem Context enquanto uma árvore com props for suficiente.
+### Onde o estado vive
+
+`useWeatherApp`, chamado uma vez por `App`, concentra o estado compartilhado em `useReducer`. `App` distribui dados e ações por props. Componentes mantêm somente detalhes visuais e o texto ainda não enviado da busca; o termo enviado fica em `SearchState` para retry reproduzível. Não usar Context, store externa ou cópias do clima em cada cartão.
+
+Serviços não guardam estado de tela. `localStorage` contém somente preferências autorizadas; não é fonte de dados meteorológicos. Tokens, controllers e operações pendentes ficam em refs do controlador, sem serialização; reducer contém apenas estado representável e transições puras.
 
 ```ts
 type SearchState =
@@ -449,13 +453,22 @@ type SearchState =
   | { status: 'empty'; query: string }
   | { status: 'error'; query: string; error: AppError };
 
-interface WeatherState {
-  status: 'idle' | 'locating' | 'loading' | 'ready' | 'error';
-  target: WeatherLocation | null;
-  snapshot: WeatherData | null;
-  error: AppError | null;
-  refreshFailed: boolean;
-}
+type WeatherState =
+  | { status: 'idle' }
+  | { status: 'loading'; phase: 'location' }
+  | {
+      status: 'loading';
+      phase: 'forecast';
+      target: WeatherLocation;
+      snapshot: WeatherData | null;
+    }
+  | { status: 'success'; target: WeatherLocation; snapshot: WeatherData }
+  | {
+      status: 'error';
+      target: WeatherLocation | null;
+      snapshot: WeatherData | null;
+      error: AppError;
+    };
 
 interface AppState {
   search: SearchState;
@@ -469,14 +482,38 @@ interface AppState {
 }
 ```
 
-Invariantes do reducer:
+### Estados e transições explícitos
 
-- Estado inicial sem cidade ativa; preferências não são seleção confirmada. `ready` requer snapshot utilizável e nenhum erro ativo da consulta; resposta parcial é `ready` com `partial`.
-- Em refresh do mesmo alvo, `loading` ou `error` podem manter snapshot; `refreshFailed` só marca falha de atualização, sem reescrever `completedAtMs`. Em mudança de alvo, limpar snapshot; `locating` não tem alvo conhecido nem snapshot anterior na área meteorológica.
+| Estado | Busca de cidades | Consulta meteorológica |
+|---|---|---|
+| `idle` | Ainda não houve envio válido; campo pode conter texto em edição. | Nenhum alvo confirmado nem consulta iniciada. |
+| `loading` | Busca pendente com termo enviado; resultados antigos não ficam selecionáveis. | `phase: location` aguarda coordenadas; `phase: forecast` aguarda dados para alvo conhecido. |
+| `success` | Ao menos uma cidade utilizável; `partial` indica descarte de itens inválidos. | Snapshot utilizável; `snapshot.partial` diferencia sucesso parcial sem novo status paralelo. |
+| `empty` | Sucesso de geocoding sem correspondências, não erro técnico. | Não se aplica: nenhuma seção utilizável é `error`, nunca “cidade não encontrada”. |
+| `error` | Rede, API, timeout ou resposta inválida, mantendo termo para tentativa manual. | Falha de localização ou forecast; snapshot só pode permanecer se pertence ao mesmo alvo que falhou ao atualizar. |
+
+Busca válida: `idle/success/empty/error → loading → success/empty/error`. Envio vazio apresenta validação no formulário sem request, sem transformar isso em falha de API. Consulta manual: `idle/success/error → loading(forecast) → success/error`. Localização: `loading(location) → loading(forecast) → success/error`, com prazo próprio por etapa. Nenhum estado dispara retry automaticamente.
+
+Invariantes do reducer e dos efeitos:
+
+- Estado inicial sem cidade ativa; preferências não são seleção confirmada. `success` exige snapshot utilizável e não contém erro. Uma lista de busca vazia usa `empty`, não `success`.
+- Em refresh do mesmo alvo, `loading(forecast)` ou `error` podem manter snapshot. “Não atualizados” é derivado de `error` com snapshot, sem booleano `refreshFailed` duplicado e sem reescrever `completedAtMs`. Em mudança de alvo, limpar snapshot; `loading(location)` não contém alvo conhecido nem snapshot anterior.
 - Referência futura/ausente gera atualidade desconhecida; idade acima de 60 min e período anterior são valores derivados de `nowMs`, não duplicados no snapshot. Um tick por minuto e evento de retorno à aba atualizam somente apresentação.
 - Controlador mantém dois tokens incrementais e dois contextos de cancelamento: busca e intenção meteorológica. Geolocalização e forecast compartilham o token meteorológico, mas têm prazos próprios. Cancelar requisição antiga não substitui verificação de token antes de commit.
 - Duplicatas só são ignoradas enquanto a mesma operação/parâmetros estiverem pendentes. Mudança de termo/alvo pode superseder; quando terminou, nova tentativa manual é permitida, salvo bloqueio por rate limit.
 - Escritas de preferências partem exclusivamente de ações explícitas de cidade/unidade/exclusão, nunca de efeito genérico que observa snapshot ou unidade. Restaurar valores, refresh e respostas tardias não recriam valores apagados.
+
+- Geocoding e previsão usam bloqueios de rate limit independentes. Antes de iniciar chamada, conferir prazo, duplicata pendente e intenção. `finally` de operação antiga não limpa o controller, o loading ou o erro da nova.
+- Usar ID da cidade em memória para comparar alvos manuais e coordenadas do pedido para o alvo do dispositivo, nunca coordenadas da grade da resposta. O retry de falha de localização exige novo clique explícito; falha de forecast com alvo conhecido repete somente o forecast.
+- Ao desmontar, cancelar fetches e limpar timers/listeners. Geolocalização não cancelável pode completar, mas não pode produzir efeito após timeout, supersessão ou desmontagem.
+
+### Conversão derivada na renderização — RF-04
+
+Guardar apenas temperaturas de origem em Celsius e a preferência `Unit`. Componentes usam um helper puro de `lib/units.ts` ao renderizar: Celsius mantém o valor; Fahrenheit deriva `C × 9 / 5 + 32`. Converter também sensação térmica e mínimas/máximas. `null` continua indisponível e zero continua válido.
+
+Arredondar somente após conversão: até uma casa decimal, empate afastado de zero e sem zero negativo, com formatação pt-BR. Não guardar `temperatureF`, strings formatadas ou arrays convertidos em estado; não converter de volta a partir do valor já arredondado. Assim alternâncias não acumulam erro. `useMemo` só se houver custo observado, não por padrão.
+
+Selecionar unidade altera apresentação e preferência local, sem fetch, mudança de status da consulta, reinício de timeout ou alteração dos horários. Durante carregamento, a resposta aceita será renderizada na unidade vigente naquele momento, não na unidade capturada no início da chamada. Vento, umidade e precipitação não mudam. Referências: CA-04.1 a CA-04.4, EC-21/EC-30/EC-34/EC-44.
 
 ## Error Handling
 
@@ -484,7 +521,9 @@ Invariantes do reducer:
 |---|---|---|
 | Vazio após trim | Erro de validação associado ao campo, nenhuma chamada. | EC-01. |
 | Geocoding vazio válido | `empty`, orientação para nova busca; sem erro de rede. | CA-05.2, EC-04. |
-| Falha de rede, HTTP 4xx/5xx, JSON inválido | `error` com mensagem pt-BR por categoria e nova tentativa manual. Não expor corpo/URL original. | CA-05.3, EC-06, RNF-06. |
+| Rede/CORS | `network`, com mensagem de falha de conexão e nova tentativa manual. Não afirmar “offline” somente por fetch rejeitado: CORS e rede podem ser indistinguíveis. | CA-05.3, EC-06, RNF-06. |
+| HTTP 4xx/5xx, exceto 429 | `http`, com status técnico sanitizado e mensagem pt-BR de indisponibilidade; sem repetir automaticamente. Não usar corpo bruto do provedor nem classificar como busca vazia. | CA-05.3, EC-06. |
+| HTTP 200 com `error: true`, JSON ou envelope inválido | `invalid-response`; não retornar lista vazia ou dados fabricados. JSON inválido é falha total; campo isolado inválido segue política parcial. | EC-06/EC-10/EC-13. |
 | Timeout | Erro aos 10 s, liberar interação; descartar resultado posterior e nunca retry automático. | EC-07/EC-33. |
 | Rate limit | Mensagem e bloqueio do serviço até `retryAtMs`, quando válido. Prazo passado não cria espera. | EC-08/EC-09/EC-39. |
 | Campo/série inválida | `null`, “Sem dados” e aviso parcial; preservar outros campos associáveis. | EC-10 a EC-14, EC-36/EC-43. |
@@ -495,6 +534,25 @@ Invariantes do reducer:
 | Resultado superado | Não alterar UI, preferências, horários nem loading vigente; sem notificação de cancelamento deliberado. | EC-15/EC-17/EC-33. |
 
 Usar mensagens de domínio centralizadas em pt-BR, com região de status anunciada e área de erro acessível. Não mover foco por chegada de resposta; busca permanece focada no cenário EC-29. Botões de repetição bloqueados por prazo expõem o motivo em texto acessível. Se o elemento focado deixar de existir após ação explícita, encaminhar para controle equivalente do fluxo.
+
+### Resposta parcial e recuperação
+
+Normalizar cada campo/série independentemente; só aceitar valor com tipo, domínio, unidade e associação temporal válidos. Uma seção utilizável exige ao menos um campo meteorológico válido, não apenas nome ou horário. Com uma seção válida, retornar `success` parcial, marcar os campos/seção ausentes e oferecer atualização manual. Com ambas inutilizáveis, retornar `invalid-response`.
+
+Uma resposta parcial nova não herda valores nem horários meteorológicos do snapshot anterior. Seu horário de conclusão é novo somente se a resposta é utilizável e vigente. Campo obrigatório estruturalmente removido não é resolvido por placeholder permanente: bloquear a entrega afetada e revisar o contrato, conforme a spec.
+
+O retry usa o último termo enviado ou alvo confirmado que falhou, nunca o texto ainda não enviado. Se houve ação posterior que supersedeu a falha, não disponibilizar retry obsoleto que substitua a intenção atual. Pode repetir após conclusão, mas não duplicar operação pendente nem ultrapassar bloqueio válido. Não criar loop de retry ou fila de chamadas.
+
+### Revisão crítica das decisões
+
+| Risco identificado | Ajuste adotado e evidência esperada |
+|---|---|
+| `ready`, `error` e flags independentes permitem combinações contraditórias. | Unificar nomenclatura em `success` e usar união discriminada; falha de refresh é derivada de erro com snapshot. Testar transições sem snapshot em sucesso. |
+| Tratar ausência de previsão como `empty` mascara falha do provedor. | Reservar `empty` ao geocoding válido sem resultados; nenhuma seção utilizável é erro explícito (EC-13). |
+| Duplicar Fahrenheit no estado causa divergência e erro acumulado. | Derivar do Celsius original na renderização e verificar zero chamadas ao alternar, inclusive com request pendente (EC-21/EC-44). |
+| Abort isolado não impede callbacks antigos ou `finally` atrasado. | Tokens por fluxo, prazo e limpeza condicionada à operação vigente; testar resposta após timeout e retry (EC-15/EC-17/EC-33). |
+| Boas intenções de degradação podem esconder resposta permanentemente incompleta. | Distinguir parcial ocasional de ausência estrutural, não mesclar snapshots e manter testes do contrato completo (CA-02.1/CA-03.2/EC-36). |
+| Catch genérico pode transformar bug em mensagem de rede ou sucesso vazio. | Classificar apenas falhas conhecidas no limite responsável, preservar erro inesperado para tratamento explícito e diagnóstico sanitizado; nunca retornar sucesso fictício. |
 
 Falhas inesperadas de renderização devem apresentar tela recuperável sem stack trace ou dados pessoais na UI; usar uma fronteira de erro React única na raiz, sem tratar exceção como consulta bem-sucedida. Não adicionar infraestrutura de telemetria.
 
