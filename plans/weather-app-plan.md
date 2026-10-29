@@ -615,6 +615,8 @@ O retry usa o último termo enviado ou alvo confirmado que falhou, nunca o texto
 
 Falhas inesperadas de renderização devem apresentar tela recuperável sem stack trace ou dados pessoais na UI; usar uma fronteira de erro React única na raiz, sem tratar exceção como consulta bem-sucedida. Não adicionar infraestrutura de telemetria.
 
+`main.tsx` monta `App` em `StrictMode`, importa `index.css` e instala `AppErrorBoundary` uma vez. O wrapper funcional usa `react-error-boundary` para respeitar a convenção sem class components; o fallback reutiliza `ErrorState` e permite reset manual, sem expor o erro bruto. O shell inicial não faz consultas nem apresenta mocks. Fontes usam Inter local, quando disponível, e fallback system-ui, sem carregamento externo.
+
 ## Testing Strategy
 
 A matriz da spec é o índice de cobertura: identificar testes por CA/EC. Um cenário compartilhado é testado uma vez no nível mais apropriado e integrado aos fluxos consumidores, sem exigir duplicação por story.
