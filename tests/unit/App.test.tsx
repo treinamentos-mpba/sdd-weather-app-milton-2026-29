@@ -41,6 +41,53 @@ afterEach(() => {
 });
 
 describe('App integrado', () => {
+  it('alterna todas as temperaturas dez vezes sem acumular arredondamento ou consultar novamente (EC-21/34/44)', async () => {
+    const user = userEvent.setup();
+    if (!data.current) throw new Error('O mock deve conter condições atuais.');
+    const source: WeatherData = {
+      ...data,
+      current: { ...data.current, temperatureC: 12.34, apparentTemperatureC: -0.04 },
+      forecast: data.forecast.map((day) => ({
+        ...day,
+        minTemperatureC: -1.25,
+        maxTemperatureC: 12.34,
+      })),
+    };
+    const original = structuredClone(source);
+    vi.mocked(searchCities).mockResolvedValue(cities);
+    vi.mocked(fetchWeather).mockResolvedValue({ ok: true, value: source });
+    render(<App />);
+    await user.type(screen.getByRole('textbox', { name: 'Nome da cidade' }), 'Salvador{Enter}');
+    await user.click(screen.getByRole('button', { name: 'Salvador, Bahia, Brasil' }));
+    const current = within(screen.getByRole('region', { name: 'Clima em Salvador' }));
+    const forecast = within(screen.getByRole('region', { name: 'Previsão de 5 dias' }));
+
+    for (let index = 0; index < 10; index++) {
+      await user.click(screen.getByRole('radio', { name: 'Fahrenheit' }));
+      expect(current.getByText('54,2 °F', { exact: false })).toBeInTheDocument();
+      expect(current.getByText('Sensação térmica: 31,9 °F')).toBeInTheDocument();
+      for (const card of forecast.getAllByRole('article')) {
+        expect(within(card).getByText('54,2 °F')).toBeInTheDocument();
+        expect(within(card).getByText('29,8 °F')).toBeInTheDocument();
+      }
+      expect(within(screen.getByRole('main')).queryByText(/°C/)).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('radio', { name: 'Celsius' }));
+      expect(current.getByText('12,3 °C', { exact: false })).toBeInTheDocument();
+      expect(current.getByText('Sensação térmica: 0 °C')).toBeInTheDocument();
+      for (const card of forecast.getAllByRole('article')) {
+        expect(within(card).getByText('12,3 °C')).toBeInTheDocument();
+        expect(within(card).getByText('-1,3 °C')).toBeInTheDocument();
+      }
+      expect(within(screen.getByRole('main')).queryByText(/°F/)).not.toBeInTheDocument();
+      expect(current.getByText('18,5 km/h')).toBeInTheDocument();
+      expect(current.getByText('0,4 mm')).toBeInTheDocument();
+    }
+    expect(source).toEqual(original);
+    expect(searchCities).toHaveBeenCalledTimes(1);
+    expect(fetchWeather).toHaveBeenCalledTimes(1);
+  });
+
   it('inicia sem mock/rede e busca exige escolha explícita antes da previsão', async () => {
     const user = userEvent.setup();
     const search = deferred<Result<CitySearchResult>>();

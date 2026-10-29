@@ -130,6 +130,63 @@ describe('fetchWeather', () => {
     expect(data.partial).toBe(true);
   });
 
+  it.each([
+    'current',
+    'daily',
+  ])('preserva uma única temperatura válida em %s sem exigir a outra seção (EC-36)', async (section) => {
+    const body = forecastResponse();
+    mockResponse({
+      ...body,
+      current: section === 'current' ? { temperature_2m: 0 } : undefined,
+      daily:
+        section === 'daily'
+          ? { time: body.daily.time, temperature_2m_min: [null, null, -5, null, null] }
+          : undefined,
+    });
+    const data = success(await fetchWeather(forecastLocation, context()));
+    expect(data.partial).toBe(true);
+    if (section === 'current') {
+      expect(data.current).toEqual({
+        temperatureC: 0,
+        apparentTemperatureC: null,
+        weatherCode: null,
+        relativeHumidityPct: null,
+        windSpeedKmh: null,
+        precipitationMm: null,
+        pressureMslHpa: null,
+        referenceTimeMs: null,
+      });
+      expect(data.forecast).toEqual([]);
+    } else {
+      expect(data.current).toBeNull();
+      expect(data.forecast).toHaveLength(5);
+      expect(data.forecast.map((day) => day.minTemperatureC)).toEqual([null, null, -5, null, null]);
+      expect(
+        data.forecast.every(
+          (day) =>
+            day.weatherCode === null &&
+            day.maxTemperatureC === null &&
+            day.maxPrecipitationProbabilityPct === null &&
+            day.meanRelativeHumidityPct === null &&
+            day.maxWindSpeedKmh === null,
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it('datas e horário válidos sem variáveis meteorológicas não contam como sucesso (EC-13)', async () => {
+    const body = forecastResponse();
+    mockResponse({
+      ...body,
+      current: { time: body.current.time },
+      daily: { time: body.daily.time },
+    });
+    await expect(fetchWeather(forecastLocation, context())).resolves.toEqual({
+      ok: false,
+      error: { kind: 'invalid-response', service: 'forecast', status: null, retryAtMs: null },
+    });
+  });
+
   it('normaliza zeros, temperaturas negativas e valores inválidos independentemente', async () => {
     const body = forecastResponse();
     body.current = {

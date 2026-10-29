@@ -272,6 +272,39 @@ describe('useWeather', () => {
   });
 
   it.each([
+    'success',
+    'error',
+  ] as const)('forecast antigo com %s não altera o local nem o horário do sucesso mais recente (EC-15)', async (outcome) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-29T19:00:00Z'));
+    const old = deferred<Result<WeatherData>>();
+    vi.mocked(fetchWeather)
+      .mockReturnValueOnce(old.promise)
+      .mockResolvedValueOnce({
+        ok: true,
+        value: { ...weatherData, location: { kind: 'city', city: otherCity } },
+      });
+    const { result } = renderHook(() => useWeather());
+    let pending!: Promise<void>;
+    act(() => {
+      pending = result.current.selectCity(city);
+    });
+    await act(() => result.current.selectCity(otherCity));
+    const accepted = result.current.data;
+    expect(accepted?.location).toEqual({ kind: 'city', city: otherCity });
+    expect(accepted?.completedAtMs).toBe(Date.now());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+      old.resolve(outcome === 'success' ? weatherResult : failure('forecast'));
+      await pending;
+    });
+    expect(result.current.data).toBe(accepted);
+    expect(result.current.weatherState.status).toBe('success');
+    expect(result.current.weatherError).toBeNull();
+    expect(fetchWeather).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
     'search',
     'weather',
   ] as const)('bloqueio de %s não bloqueia o outro serviço', async (flow) => {
