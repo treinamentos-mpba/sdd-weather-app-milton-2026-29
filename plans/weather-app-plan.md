@@ -224,7 +224,7 @@ type ServiceName = 'geocoding' | 'forecast' | 'geolocation' | 'preferences';
 type ErrorKind =
   | 'network' | 'http' | 'timeout' | 'rate-limit' | 'invalid-response'
   | 'permission-denied' | 'unavailable'
-  | 'storage-read' | 'storage-write' | 'storage-remove';
+  | 'storage-read' | 'storage-write' | 'storage-remove' | 'unexpected';
 
 interface AppError {
   kind: ErrorKind;
@@ -267,6 +267,8 @@ interface WeatherServices {
 ```
 
 Assinaturas podem ser exportações de funções, sem implementar uma classe `WeatherServices`. Cancelamento por supersessão não é erro notificável: a camada coordenadora descarta o resultado por token/signal. Erros reais seguem `Result`; exceções inesperadas não viram listas vazias ou sucessos simulados. `AppError` não armazena query, URL, coordenadas, corpo da resposta nem mensagem bruta do provedor (RNF-06).
+
+O controlador deve tratar rejeições inesperadas em cada ação assíncrona: se a intenção ainda estiver vigente, encerrar o loading com `unexpected`, mensagem recuperável e diagnóstico sanitizado apenas de categoria/serviço. Não registrar o objeto de exceção bruto, que pode conter URL ou coordenadas. Rejeição de operação superada não altera o estado atual. A fronteira de erro React não substitui esse tratamento.
 
 ## Data Flow
 
@@ -460,12 +462,13 @@ Resposta ilustrativa: demais metadados foram omitidos, mas os cinco dias e as un
 Validar cada campo contra sua unidade antes do mapeamento. Ausência, `null` ou valor inválido vira indisponibilidade explícita; se ambas as seções ficarem sem dados utilizáveis, retornar erro. A unidade escolhida pela pessoa (`Unit`) não vem da API nem altera os valores de origem.
 
 - Referência atual com offset é convertida em instante; sem offset, resolver no fuso IANA retornado somente quando há uma correspondência única. O helper deve verificar a volta para os mesmos componentes locais, considerando offsets antes/depois de transições; zero ou múltiplos instantes correspondentes produzem `null`. Nunca usar `new Date` sobre data local sem offset presumindo fuso do dispositivo. Não aplicar `utc_offset_seconds` fixo a todo o período.
-- Datas diárias válidas e ordenadas definem a data inicial recebida. Se o início estiver ausente, converter o instante capturado no início da requisição para a data local do fuso válido retornado para construir placeholders, sem associar valores a datas inexistentes. Sem fuso válido, previsão indisponível, conforme EC-43.
+- Datas diárias válidas e ordenadas definem a data inicial recebida. Se a resposta não permitir determinar com segurança o início do período, usar `periodStart: null` e `forecast: []`, com aviso de previsão indisponível; não reconstruir o período pelo relógio da requisição ou do dispositivo. Lacunas identificáveis dentro de período confiável continuam como placeholders. Sem fuso válido, previsão indisponível, conforme EC-43.
+- Com condições atuais utilizáveis, mas fuso inválido/ausente na resposta, manter `timeZone: null` e exibir conclusão da consulta em UTC, explicitamente rotulada, com aviso de fuso indisponível. Referência atual com offset explícito ainda pode ser interpretada; sem instante inequívoco, mostrar “Atualidade desconhecida”. Não adotar fuso do dispositivo nem o do geocoding como substituto silencioso.
 - Mapeamento de campo e texto WMO segue integralmente a tabela/lista da spec. Nenhuma agregação horária, estimação local ou failover.
 
 ### Transporte e navegador — RF-05/RF-06, RNF-06
 
-Fetch direto via HTTPS, sem credenciais, com `cache: 'no-store'`, sem redirecionar para origem arbitrária e `referrerPolicy: 'no-referrer'`. Não enviar query/localização a endpoints de diagnóstico. Endpoints são constantes, parâmetros nunca vêm de uma URL externa fornecida pela pessoa.
+Fetch direto via HTTPS, sem credenciais, com `cache: 'no-store'`, `redirect: 'error'` e `referrerPolicy: 'no-referrer'`. Rejeitar redirecionamentos, mesmo que o destino pareça oficial; não seguir `Location` manualmente. Navegadores podem expor essa rejeição como falha de transporte genérica, sem permitir distingui-la de CORS/rede; não inventar diagnóstico específico. Não enviar query/localização a endpoints de diagnóstico. Endpoints são constantes, parâmetros nunca vêm de uma URL externa fornecida pela pessoa.
 
 O limite de 10 s inclui fetch, leitura do corpo e normalização; conferir prazo/token também antes de aceitar o resultado. Geolocation API usa limite explícito coordenado de 10 s, `maximumAge: 0` e sem exigir alta precisão. Callback posterior a timeout ou seleção manual é ignorado, mesmo que o navegador mantenha o prompt de permissão.
 
@@ -568,6 +571,7 @@ Selecionar unidade altera apresentação e preferência local, sem fetch, mudan�
 | Armazenamento inválido/falha | Preservar campos válidos e escolhas na sessão; informar leitura, escrita ou exclusão que falhou. | EC-22/EC-37/EC-38. |
 | Erro de refresh do mesmo local | Preservar snapshot da sessão com “Não atualizados”, horários anteriores e ação manual. | EC-25. |
 | Resultado superado | Não alterar UI, preferências, horários nem loading vigente; sem notificação de cancelamento deliberado. | EC-15/EC-17/EC-33. |
+| Rejeição assíncrona inesperada | Capturar no controlador, sair de loading e apresentar erro recuperável `unexpected` somente se a intenção ainda for vigente. Diagnóstico sanitizado, sem converter bug em sucesso ou falha conhecida de rede. | RF-05, RNF-04/RNF-06. |
 
 Usar mensagens de domínio centralizadas em pt-BR, com região de status anunciada e área de erro acessível. Não mover foco por chegada de resposta; busca permanece focada no cenário EC-29. Botões de repetição bloqueados por prazo expõem o motivo em texto acessível. Se o elemento focado deixar de existir após ação explícita, encaminhar para controle equivalente do fluxo.
 
@@ -588,7 +592,7 @@ O retry usa o último termo enviado ou alvo confirmado que falhou, nunca o texto
 | Duplicar Fahrenheit no estado causa divergência e erro acumulado. | Derivar do Celsius original na renderização e verificar zero chamadas ao alternar, inclusive com request pendente (EC-21/EC-44). |
 | Abort isolado não impede callbacks antigos ou `finally` atrasado. | Tokens por fluxo, prazo e limpeza condicionada à operação vigente; testar resposta após timeout e retry (EC-15/EC-17/EC-33). |
 | Boas intenções de degradação podem esconder resposta permanentemente incompleta. | Distinguir parcial ocasional de ausência estrutural, não mesclar snapshots e manter testes do contrato completo (CA-02.1/CA-03.2/EC-36). |
-| Catch genérico pode transformar bug em mensagem de rede ou sucesso vazio. | Classificar apenas falhas conhecidas no limite responsável, preservar erro inesperado para tratamento explícito e diagnóstico sanitizado; nunca retornar sucesso fictício. |
+| Catch genérico pode transformar bug em mensagem de rede ou sucesso vazio. | Classificar falhas conhecidas no serviço; no controlador, capturar rejeições restantes como `unexpected`, encerrar loading e notificar com diagnóstico sanitizado. Nunca retornar sucesso fictício nem confiar na fronteira React para rejeições assíncronas. |
 
 Falhas inesperadas de renderização devem apresentar tela recuperável sem stack trace ou dados pessoais na UI; usar uma fronteira de erro React única na raiz, sem tratar exceção como consulta bem-sucedida. Não adicionar infraestrutura de telemetria.
 
@@ -604,10 +608,10 @@ Na etapa Tasks, cada CA/EC deve ter um teste ou procedimento manual responsável
 |---|---|---|
 | Conversão pura em `lib/units.ts` | 0 °C → 32 °F, 100 °C → 212 °F, −40 °C → −40 °F; `null`, zero, empates positivos/negativos e alternâncias repetidas. | Valores derivados do Celsius de origem; arredondamento da spec, sem zero negativo ou perda acumulada. |
 | Demais funções de `lib/` | Cinco datas locais, DST/virada de ano, código WMO conhecido/desconhecido, unidade externa inválida, `null` versus zero e arrays desalinhados. | Dados normalizados e avisos esperados, sem dependência do fuso do processo ou criação de valores ausentes. |
-| Serviços com mock de `fetch` | Verificar URL/parâmetros/método; respostas completas, vazias, parciais, JSON inválido, HTTP 400/500/429 e rejeição de rede. | `Result` e classificação de erro corretos; encoding preservado, nenhuma falha transformada em lista vazia e nenhum dado pessoal em diagnóstico. |
+| Serviços com mock de `fetch` | Verificar URL/parâmetros/método e `redirect: 'error'`; respostas completas, vazias, parciais, JSON inválido, HTTP 400/500/429 e rejeição de rede/redirecionamento. | `Result` e classificação de erro corretos; encoding preservado, nenhuma falha transformada em lista vazia e nenhum dado pessoal em diagnóstico. Mock verifica opção de redirecionamento, não comprova comportamento do navegador. |
 | Transporte e timeout | Promessa pendente, relógio controlado em 9.999 ms e 10.000 ms, resposta tardia; `Retry-After` em segundos/data, passado, inválido ou inacessível. | Operação pendente antes do prazo, timeout no prazo, sem retry automático; bloqueio e liberação manuais do serviço correto. |
 | APIs do navegador | Localização negada/indisponível/tardia; armazenamento com leitura/escrita/remoção falha ou valor corrompido. | Permissão apenas após ação; escolhas válidas preservadas na sessão; avisos e persistência mínima, sem coordenadas. |
-| Reducer e hook | Busca independente do forecast, supersessão, duplicatas, retry após timeout, apagar preferências durante request e mudança de unidade durante carregamento. | Só a intenção vigente altera o fluxo; `finally` antigo não limpa loading novo; resposta chega na unidade vigente e não recria preferências apagadas. |
+| Reducer e hook | Busca independente do forecast, supersessão, duplicatas, retry após timeout, apagar preferências durante request, mudança de unidade durante carregamento e serviço que rejeita inesperadamente. | Só a intenção vigente altera o fluxo; `finally` antigo não limpa loading novo; resposta chega na unidade vigente e não recria preferências apagadas. Rejeição vigente sai de loading com erro recuperável; rejeição superada não altera UI nem fica sem tratamento. |
 
 Componentes usam Testing Library e `user-event` por roles, labels e texto acessível, sem inspecionar estado privado do hook:
 
@@ -628,6 +632,7 @@ Os testes isolados de componentes verificam conteúdo, foco e callbacks; contage
 
 - **Vitest:** validar encoding dos parâmetros com termos contendo `&`, `?` e marcação; verificar que entrada não altera host ou parâmetros fixos. Dados maliciosos de entrada, API e armazenamento não podem virar HTML executável. Inspecionar preferências e diagnósticos capturados para comprovar ausência de coordenadas, termo pesquisado e corpos externos onde proibidos.
 - **Playwright:** usar sentinela sintética para detectar execução de marcação recebida; verificar que permanece texto. Conferir zero acessos à geolocalização antes da ação, zero chamadas meteorológicas ao alternar unidade e ausência de coordenadas em navegação, armazenamento e mensagens.
+- **Redirecionamentos no navegador:** responder a uma requisição interceptada com HTTP 302 e destino local controlado contendo somente dados sintéticos; verificar falha recuperável e zero requisições ao destino. A verificação complementa o mock de fetch, sem enviar coordenadas para terceiros.
 - **Scanner:** adotar `@axe-core/playwright` como dependência apenas de desenvolvimento na tarefa de testes; executar regras WCAG 2.2 A/AA e dos níveis anteriores aplicáveis nos estados idle, loading, vazio, sucesso, parcial e erro. Exigir ausência de violações detectadas, sem declarar conformidade completa por esse resultado.
 - **Limite da automação:** Testing Library/Playwright verificam rótulos, regiões de status, conteúdo atualizado, foco e teclado. Confirmar os anúncios efetivamente percebidos com NVDA/Chrome e VoiceOver/Safari, registrando resultado por fluxo/critério; DOM correto isoladamente não comprova anúncio.
 - **Ambiente publicado:** verificar HTTPS, CSP, proibição de enquadramento, Referrer-Policy e Permissions-Policy no destino real de publicação, incluindo requisições necessárias ao provedor. Preview local sem headers equivalentes não é evidência desses controles.
@@ -665,13 +670,19 @@ Usar locators semânticos, expectativas que aguardam condições e relógio cont
 | Visual/assistivo manual | Layout nas cinco larguras da spec, zoom 200%, contraste, NVDA/Chrome e VoiceOver/Safari, foco e anúncios. Emulação WebKit não comprova Safari real. | RNF-01/RNF-02/RNF-07. |
 | Performance | Build de produção; 100 buscas e 100 forecasts por perfil com fixtures dez cidades/cinco dias e entrega após 500 ms. p95 pelo 95º valor ordenado ≤ 3 s por grupo. | RNF-03 e protocolo da spec. |
 
-Playwright cobre Chromium, Firefox e WebKit automaticamente; complementar com Edge/Chrome no Windows 11, Safari macOS/iOS e Chrome Android nas versões estáveis exigidas no aceite. Registrar versão, máquina e evidência, sem substituir matriz real por emulação.
+**Alinhamento obrigatório na fase Code/Test:** a configuração atual usa `pnpm dev`, projetos Chromium desktop e iPhone 13 (WebKit), enquanto a CI instala somente Chromium. Antes de declarar os E2E operacionais, criar as tarefas de configuração abaixo; este plano não afirma que já estejam implementadas:
+
+- Trocar `webServer` para `pnpm exec vite preview --host 127.0.0.1 --port 5173 --strictPort`, alinhar `baseURL`/`url` e executar `pnpm build` antes dos E2E. Não reutilizar servidor de desenvolvimento existente como evidência de build de produção.
+- Declarar projetos desktop Chromium, Firefox e WebKit, mais perfil Chromium touch de 390 × 844 para os fluxos móveis. Manter um projeto WebKit móvel para fluxos principais; não duplicar todas as combinações de viewport por engine.
+- Instalar Chromium, Firefox e WebKit e dependências do sistema na CI. Rodar os projetos planejados explicitamente, sem chamar cobertura de Firefox inexistente de aprovação.
+
+Complementar os projetos automatizados com Edge/Chrome no Windows 11, Safari macOS/iOS e Chrome Android nas versões estáveis exigidas no aceite. Registrar versão, máquina e evidência, sem substituir matriz real por emulação.
 
 Para performance, usar controle de rede/CPU do Chromium: 10 Mbps em ambos os sentidos, 100 ms adicionais, 390 × 844/CPU 4× no móvel e 1366 × 768/sem desaceleração no desktop. Verificar que a limitação realmente afeta as respostas controladas; se interceptação de teste contornar o throttling, servir fixtures via transporte de teste limitado, não aceitar medição sem limitação. Cronometrar acionamento até commit visual completo/parcial utilizável. Erros e timeouts são grupos separados; consulta live por perfil registra integração/latência, sem integrar p95 controlado.
 
-Testes de data usam instantes, fuso IANA e valores explícitos da spec; incluir referência ambígua em transição de horário, virada de dia com requisição em andamento e retorno à aba. Avançar relógio não pode causar fetch periódico.
+Testes de data usam instantes, fuso IANA e valores explícitos da spec. Em `America/New_York`, referência local `2026-03-08T02:30` é inexistente e `2026-11-01T01:30` é ambígua: ambas resultam em `referenceTimeMs: null`, sem adivinhar instante. Incluir virada de dia com requisição em andamento, período sem âncora confiável, fuso inválido com conclusão rotulada UTC e retorno à aba. Avançar relógio não pode causar fetch periódico.
 
-Comandos de entrega existentes: `pnpm lint`, `pnpm build`, `pnpm test` e `pnpm test:e2e`. `pnpm check` complementa formatação; usar os comandos selecionados conforme os arquivos alterados. Auditoria de dependências de produção com `pnpm audit --prod` e triagem documentada antes de publicar. Esta fase documental não executa build ou testes de implementação.
+Comandos de entrega existentes: `pnpm lint`, `pnpm build`, `pnpm test` e `pnpm test:e2e`. Manter `pnpm lint` conforme checklist do projeto; `pnpm check` acrescenta validação de formatação, embora repita lint internamente. Registrar uma tarefa para adicionar `pnpm check` à CI antes de declarar esse gate automatizado; não duplicar testes para compensar essa sobreposição. Auditoria de dependências de produção com `pnpm audit --prod` e triagem documentada antes de publicar. Esta fase documental não executa build ou testes de implementação.
 
 ### Gates de entrega
 
@@ -690,7 +701,7 @@ Não estabelecer percentual de cobertura arbitrário, retries para esconder flak
 | API direta, sem backend | Proxy/BFF com quota e cache centralizados. | Menos operação e nenhum segredo, mas CORS, quota e latência externos não são controlados. Proxy adicionaria hospedagem e tratamento de localização no servidor, fora do MVP. Tratar falhas e limites sem SLA/failover. | RF-05, RNF-03/RNF-04/RNF-06. |
 | Fetch nativo | SDK do provedor ou cliente HTTP adicional. | Poucos endpoints dispensam dependência; helper HTTP único concentra deadline/status. SDK não elimina validação de domínio. | RF-01/RF-05. |
 | JSON validado manualmente | Biblioteca de schema em runtime. | Guards pequenos evitam dependência, mas podem omitir casos. Normalizador único e fixtures inválidas; reconsiderar biblioteca se os contratos crescerem, sem duplicar schema manual e externo. | EC-10 a EC-14/EC-43. |
-| Intl sem biblioteca de datas | Biblioteca com resolução explícita de fuso/DST. | Menor bundle, mas referência local ambígua exige helper testado; “Atualidade desconhecida” em vez de adivinhação. Reavaliar se a complexidade comprovada superar o benefício, sem alterar silenciosamente as regras. | RF-03/RF-08, EC-20/EC-28. |
+| Intl sem biblioteca de datas | Biblioteca com resolução explícita de fuso/DST. | Menor bundle, mas referência local ambígua/inexistente exige helper pequeno e testado; “Atualidade desconhecida” em vez de adivinhação. Se não for possível demonstrar resolução correta sem algoritmo extenso próprio, reavaliar biblioteca antes de implementar, sem alterar silenciosamente as regras. | RF-03/RF-08, EC-20/EC-28. |
 | Nome/região sem ID persistido | Salvar ID/coordenadas para restauração direta. | Mais cliques e nova busca, mas atende à minimização definida. Alternativa exige revisão da spec; nunca escolher homônimo automaticamente. | RF-07, EC-23/EC-42. |
 | Sem cache e sem retry automático | TanStack Query, stale-while-revalidate, backoff ou service worker. | Menos automação e maior dependência de conexão, mas sem estado/cache desnecessário ou cascata de tentativas. Preservar somente snapshot visível na sessão e retry manual. | RF-05/RF-08, EC-25/EC-26. |
 | Celsius de origem e conversão derivada | Guardar ambas as unidades ou requisitar cada unidade ao provedor. | Recalcula poucos números no render, evita estado divergente e rede adicional; arredondar só na apresentação. | RF-04, EC-21/EC-44. |
