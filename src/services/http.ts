@@ -19,7 +19,7 @@ function retryAt(value: string | null, now: number): number | null {
   return Number.isSafeInteger(deadline) && deadline > now ? deadline : null;
 }
 
-export async function requestJson<T>(
+export async function fetchWithTimeout<T>(
   url: URL,
   service: ServiceName,
   context: RequestContext,
@@ -76,6 +76,7 @@ export async function requestJson<T>(
     } catch (error) {
       if (context.signal.aborted) throw cancelled();
       if (timedOut) return failure('timeout');
+      if (error instanceof DOMException && error.name === 'AbortError') return failure('timeout');
       if (error instanceof TypeError) return failure('network');
       throw error;
     }
@@ -95,6 +96,7 @@ export async function requestJson<T>(
     } catch (error) {
       if (context.signal.aborted) throw cancelled();
       if (timedOut) return failure('timeout');
+      if (error instanceof DOMException && error.name === 'AbortError') return failure('timeout');
       if (error instanceof SyntaxError) return failure('invalid-response');
       if (error instanceof TypeError) return failure('network');
       throw error;

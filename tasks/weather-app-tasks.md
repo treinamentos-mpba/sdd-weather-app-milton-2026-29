@@ -219,6 +219,11 @@ Cada ID aparece em uma única fatia; tarefas de fatias anteriores são reutiliza
 
 ### T-14 — Aplicar deadline completo de requisição
 
+> Helper compartilhado: `services/http.ts::fetchWithTimeout`, consumido por
+> geocoding e forecast. `getServiceErrorMessage` em `lib/errors.ts` apresenta
+> timeout como “A requisição demorou demais.” e rede como “Falha de rede.”.
+> Cancelamento externo não gera mensagem de timeout; integração na UI segue pendente.
+
 - **ID:** T-14
 - **Tipo:** Data
 - **Descrição:** Encerrar transporte pendente e impedir aceite após o prazo.

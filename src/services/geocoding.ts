@@ -1,7 +1,7 @@
 import { isRecord, parseCity } from '../lib/validation';
 import type { Result } from '../types/errors';
 import type { CitySearchResult, RequestContext } from '../types/services';
-import { requestJson } from './http';
+import { fetchWithTimeout } from './http';
 
 function normalizeCities(data: unknown): Result<CitySearchResult> {
   const invalid: Result<CitySearchResult> = {
@@ -44,5 +44,5 @@ export async function searchCities(
     language: 'pt',
     format: 'json',
   }).toString();
-  return requestJson(url, 'geocoding', context, normalizeCities);
+  return fetchWithTimeout(url, 'geocoding', context, normalizeCities);
 }

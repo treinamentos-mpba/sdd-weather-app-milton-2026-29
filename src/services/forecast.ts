@@ -2,7 +2,7 @@ import { normalizeWeather } from '../lib/normalizeWeather';
 import type { Result } from '../types/errors';
 import type { RequestContext } from '../types/services';
 import type { WeatherData, WeatherLocation } from '../types/weather';
-import { requestJson } from './http';
+import { fetchWithTimeout } from './http';
 
 export async function fetchWeather(
   location: WeatherLocation,
@@ -36,7 +36,7 @@ export async function fetchWeather(
     precipitation_unit: 'mm',
     timeformat: 'iso8601',
   }).toString();
-  return requestJson(url, 'forecast', context, (data) =>
+  return fetchWithTimeout(url, 'forecast', context, (data) =>
     normalizeWeather(data, location, context.now),
   );
 }

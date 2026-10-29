@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { requestJson } from '../../src/services/http';
+import { getServiceErrorMessage } from '../../src/lib/errors';
+import { fetchWithTimeout } from '../../src/services/http';
 import type { Result } from '../../src/types/errors';
 import type { RequestContext } from '../../src/types/services';
 
@@ -12,7 +13,7 @@ function context(): RequestContext {
 }
 
 function request(options = context()) {
-  return requestJson(url, 'geocoding', options, normalize);
+  return fetchWithTimeout(url, 'geocoding', options, normalize);
 }
 
 function mockResponse(response: Response) {
@@ -62,11 +63,62 @@ describe('transporte de geocoding', () => {
   });
 
   it('retorna network sem expor URL, corpo ou exceção bruta', async () => {
+    vi.useFakeTimers();
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('URL privada')));
-    await expect(request()).resolves.toEqual({
+    const result = await request();
+    expect(result).toEqual({
       ok: false,
       error: { kind: 'network', service: 'geocoding', status: null, retryAtMs: null },
     });
+    if (result.ok) throw new Error('Esperada falha de rede.');
+    expect(getServiceErrorMessage(result.error)).toBe('Falha de rede.');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it.each([
+    'fetch',
+    'body',
+  ])('converte AbortError de %s em timeout com mensagem clara', async (phase) => {
+    vi.useFakeTimers();
+    const aborted = new DOMException('Diagnóstico privado', 'AbortError');
+    const response = new Response('{}');
+    if (phase === 'body') vi.spyOn(response, 'json').mockRejectedValue(aborted);
+    vi.stubGlobal(
+      'fetch',
+      phase === 'fetch' ? vi.fn().mockRejectedValue(aborted) : vi.fn().mockResolvedValue(response),
+    );
+    const result = await request();
+    expect(result).toMatchObject({ ok: false, error: { kind: 'timeout' } });
+    if (result.ok) throw new Error('Esperado timeout.');
+    expect(getServiceErrorMessage(result.error)).toBe('A requisição demorou demais.');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('aborta o fetch aos 10 s e retorna mensagem sem aguardar a rede', async () => {
+    vi.useFakeTimers();
+    let activeSignal: AbortSignal | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: string, options: RequestInit) => {
+        activeSignal = options.signal ?? undefined;
+        return new Promise<Response>((_resolve, reject) => {
+          activeSignal?.addEventListener(
+            'abort',
+            () => {
+              reject(new DOMException('Aborted', 'AbortError'));
+            },
+            { once: true },
+          );
+        });
+      }),
+    );
+    const pending = request();
+    await vi.advanceTimersByTimeAsync(10_000);
+    const result = await pending;
+    expect(activeSignal?.aborted).toBe(true);
+    if (result.ok) throw new Error('Esperado timeout.');
+    expect(getServiceErrorMessage(result.error)).toBe('A requisição demorou demais.');
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('não disfarça uma exceção inesperada como falha de rede', async () => {
@@ -142,7 +194,7 @@ describe('transporte de geocoding', () => {
     vi.useFakeTimers();
     vi.setSystemTime(now);
     mockResponse(new Response('{}'));
-    const result = await requestJson(url, 'geocoding', context(), (data) => {
+    const result = await fetchWithTimeout(url, 'geocoding', context(), (data) => {
       vi.setSystemTime(now + 10_000);
       return normalize(data);
     });

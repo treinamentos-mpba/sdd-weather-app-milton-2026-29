@@ -499,6 +499,14 @@ Fetch direto via HTTPS, sem credenciais, com `cache: 'no-store'`, `redirect: 'er
 
 O limite de 10 s inclui fetch, leitura do corpo e normalização; conferir prazo/token também antes de aceitar o resultado. Geolocation API usa limite explícito coordenado de 10 s, `maximumAge: 0` e sem exigir alta precisão. Callback posterior a timeout ou seleção manual é ignorado, mesmo que o navegador mantenha o prompt de permissão.
 
+O helper `services/http.ts::fetchWithTimeout` implementa esse limite com
+`AbortController`, `clearTimeout` e remoção do listener externo em `finally`.
+Mantém `Result/AppError`, sem classe `WeatherServiceError`. `AbortError` sem
+cancelamento externo é `timeout`; cancelamento externo continua rejeição
+sanitizada a descartar por signal/token, não erro notificável.
+`lib/errors.ts::getServiceErrorMessage` traduz `timeout` em “A requisição
+demorou demais.” e `network` em “Falha de rede.” para a futura integração de UI.
+
 HTTP 429 pode não expor `Retry-After` ao JavaScript por CORS: ausência/inacessibilidade segue EC-09, sem criar proxy apenas para esse cabeçalho. Quando legível, interpretar segundos inteiros não negativos ou data HTTP; bloquear somente o serviço afetado até o prazo, em memória. Sem indicação documentada de limite compartilhado, não bloquear o outro serviço. Expirar prazo não faz chamada automática.
 
 Atribuir Open-Meteo/CC BY 4.0 e GeoNames e manter aviso de estimativas conforme CA-02.3/EC-41. Reconferir licença e uso não comercial antes de publicar; sem chave embutida no bundle.
