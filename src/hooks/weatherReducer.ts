@@ -4,6 +4,7 @@ import type { WeatherControllerState, WeatherState } from '../types/state';
 import type { WeatherData, WeatherLocation } from '../types/weather';
 
 export type WeatherAction =
+  | { type: 'unblock'; service: 'search' | 'weather' }
   | { type: 'search-start'; query: string }
   | { type: 'search-success'; query: string; result: CitySearchResult }
   | { type: 'search-error'; query: string; error: AppError }
@@ -36,6 +37,10 @@ export function weatherReducer(
   action: WeatherAction,
 ): WeatherControllerState {
   switch (action.type) {
+    case 'unblock':
+      return action.service === 'search'
+        ? { ...state, geocodingBlockedUntilMs: null }
+        : { ...state, forecastBlockedUntilMs: null };
     case 'search-start':
       return { ...state, search: { status: 'loading', query: action.query } };
     case 'search-success':

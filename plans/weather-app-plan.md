@@ -141,7 +141,14 @@ Um componente por arquivo. Relógio e chamadas são fornecidos nos pontos de efe
 
 ## Data Model
 
-Protótipo visual incremental: `App` compõe SearchBar, UnitToggle, atuais, previsão e os três estados de feedback com `mockWeatherData`. Inicia em success; seletor de demonstração oferece idle/loading/empty/error/success sem timers ou efeitos. Busca local compara Salvador sem distinguir caixa; outros termos exibem orientação de vazio. Retry manual volta ao mock. A interface sinaliza dados fixos ilustrativos, não clima real; `unit` permanece estado de UI e é propagada aos componentes para conversão na renderização. Não substituir nem declarar concluídos services, hook ou integração real por esse protótipo.
+Integração manual em `App`: substitui o protótipo com mock e seletor de demonstração
+por `useWeather`, inicialmente idle e sem requests. `QueryFeedback` apresenta
+busca/loading/vazio/erro e resultados com seleção explícita; `WeatherPanel`
+apresenta loading/erro/snapshot, resposta parcial e conclusão no fuso recebido
+(UTC rotulado quando indisponível). `ErrorState` chama `retry`, move foco somente
+na ação explícita e desabilita recuperação obsoleta ou bloqueada. Prazo de
+rate limit expira no hook sem retry automático. `unit` continua estado local
+de UI, convertido na renderização sem rede; persistência aguarda sua entrega.
 
 Hardening do protótipo: após retry explícito que remove seu botão, focar o `main` estável; respostas de busca não deslocam foco. Controles de unidade têm alvo mínimo de 44 × 44 CSS px e bordas dos campos devem contrastar ao menos 3:1 com o fundo adjacente. `tests/e2e/accessibility.spec.ts` verifica os cinco estados em 320/390/768/1366/1920 px, scanner WCAG A/AA, navegação por teclado, toque e reflow com texto a 200%. Anúncios percebidos por leitor de tela continuam exigindo validação manual.
 
@@ -339,7 +346,7 @@ Nos caminhos de retry, respeitar bloqueio do serviço por `Retry-After`, prazo d
 
 `services/geocoding.ts` implementa o contrato `Result<CitySearchResult>` acima;
 `services/weatherService.ts` apenas reexporta a função para preservar o caminho
-solicitado. O protótipo de UI continua sem integração com a rede. Cancelamento
+solicitado. `App` usa o hook para integrar busca e previsão reais. Cancelamento
 externo rejeita com `AbortError` sanitizado, a ser descartado pelo controlador
 conforme signal/token; não é convertido em `AppError` notificável.
 
@@ -523,7 +530,8 @@ Entrega incremental em `hooks/useWeather.ts`: implementa os fluxos independentes
 `cities`, `query` e erros/mensagens separados, sem status global que oculte
 concorrência. Busca exige seleção explícita; retry repete a última operação
 que falhou, se não houve nova operação aceita. Preferências, geolocalização,
-relógio de apresentação e integração com `App` continuam pendentes.
+relógio de apresentação continuam pendentes. `App` já integra os fluxos manuais
+por este hook; unidade permanece local à UI nesta entrega.
 
 Serviços não guardam estado de tela. `localStorage` contém somente preferências autorizadas; não é fonte de dados meteorológicos. Tokens, controllers e operações pendentes ficam em refs do controlador, sem serialização; reducer contém apenas estado representável e transições puras.
 

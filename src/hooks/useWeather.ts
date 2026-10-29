@@ -37,6 +37,28 @@ export default function useWeather() {
     };
   }, []);
 
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (const service of ['search', 'weather'] as const) {
+      const deadline =
+        service === 'search' ? state.geocodingBlockedUntilMs : state.forecastBlockedUntilMs;
+      if (deadline === null) continue;
+      const expire = () => {
+        const remaining = deadline - Date.now();
+        if (remaining > 0) {
+          timers.push(setTimeout(expire, Math.min(remaining, 2_147_483_647)));
+        } else {
+          blockedUntil.current[service] = null;
+          dispatch({ type: 'unblock', service });
+        }
+      };
+      expire();
+    }
+    return () => {
+      for (const timer of timers) clearTimeout(timer);
+    };
+  }, [state.geocodingBlockedUntilMs, state.forecastBlockedUntilMs]);
+
   const run = useCallback(
     async <T>(
       operation: Operation,
@@ -136,6 +158,10 @@ export default function useWeather() {
     weatherState: state.weather,
     geocodingBlockedUntilMs: state.geocodingBlockedUntilMs,
     forecastBlockedUntilMs: state.forecastBlockedUntilMs,
+    searchBlocked:
+      state.geocodingBlockedUntilMs !== null && state.geocodingBlockedUntilMs > Date.now(),
+    weatherBlocked:
+      state.forecastBlockedUntilMs !== null && state.forecastBlockedUntilMs > Date.now(),
     data,
     cities: state.search.status === 'success' ? state.search.cities : [],
     query: 'query' in state.search ? state.search.query : '',
@@ -143,6 +169,7 @@ export default function useWeather() {
     weatherError,
     searchErrorMessage: searchError ? getServiceErrorMessage(searchError) : null,
     weatherErrorMessage: weatherError ? getServiceErrorMessage(weatherError) : null,
+    retryOperation: lastOperation.current?.failed ? lastOperation.current.kind : null,
     search,
     selectCity,
     retry,

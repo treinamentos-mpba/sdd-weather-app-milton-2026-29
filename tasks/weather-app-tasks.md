@@ -334,7 +334,7 @@ Cada ID aparece em uma única fatia; tarefas de fatias anteriores são reutiliza
 > `hooks/weatherReducer.ts` e `types/state.ts`, com testes em
 > `tests/unit/useWeather.test.ts`. Cobre T-24/T-25 e os fluxos de T-27 a T-33
 > apenas para cidades manuais. Não conclui preferências (T-26), relógio (T-34),
-> geolocalização (T-35) nem integração da UI; nomes prováveis abaixo permanecem
+> geolocalização (T-35); a integração manual da UI consta na Entrega 6. Nomes prováveis abaixo permanecem
 > referência da arquitetura completa.
 
 ### T-24 — Implementar transições de busca
@@ -559,7 +559,7 @@ Cada ID aparece em uma única fatia; tarefas de fatias anteriores são reutiliza
 - **Arquivos prováveis:** `src/components/QueryFeedback.tsx`, `tests/components/QueryFeedback.test.tsx`.
 - **Rastreabilidade:** CA-05.1 a CA-05.4; EC-06 a EC-09, EC-29, EC-39.
 
-Entrega incremental de T-45/T-103: criar `src/components/states/LoadingState.tsx` (`message` opcional, status), `ErrorState.tsx` (`message`, `onRetry`, alerta e botão “Tentar novamente”) e `EmptyState.tsx` (`title`, `hint`, status). `tests/unit/States.test.tsx` verifica mensagens únicas, foco preservado, título/dica e recuperação manual por clique ou Tab/Enter, sem submissão de formulário. Integração em `QueryFeedback`, resposta parcial e bloqueio por prazo permanecem pendentes.
+Entrega incremental de T-45/T-103: criar `src/components/states/LoadingState.tsx` (`message` opcional, status), `ErrorState.tsx` (`message`, `onRetry`, alerta e botão “Tentar novamente”) e `EmptyState.tsx` (`title`, `hint`, status). `tests/unit/States.test.tsx` verifica mensagens únicas, foco preservado, título/dica e recuperação manual por clique ou Tab/Enter, sem submissão de formulário. A integração manual atual usa `QueryFeedback`/`WeatherPanel` para parcial e bloqueio por prazo; ErrorState também recebe `retryDisabled` e `retryHint`.
 
 ### T-46 — Apresentar condições atuais
 
@@ -634,6 +634,15 @@ Implementação incremental de T-47/T-48: `lib/format.ts` formata datas locais a
 - **Rastreabilidade:** CA-07.1; EC-22 a EC-24, EC-37, EC-38, EC-42.
 
 ## Entrega 6 — Integração em App
+
+**Integração atual (T-53/T-54 e unidade local de T-56):** o protótipo abaixo é
+histórico. `App` usa `useWeather`, `QueryFeedback` e `WeatherPanel`, sem mock nem
+seletor de demonstração. Busca exige seleção explícita; erros chamam retry da
+última ação falha, bloqueios expiram sem request automático, parcial e UTC são
+identificados. `tests/unit/App.test.tsx` e `tests/e2e/accessibility.spec.ts`
+verificam fluxos com serviços/rede controlados, conversão sem request e
+acessibilidade/responsividade. Persistência, localização e relógio de atualidade
+não são concluídos por esta fatia.
 
 **Entrega visual antecipada autorizada (T-50/T-54/T-56):** compor `App.tsx` com mock identificado, header com marca/SearchBar/`UnitToggle.tsx`, unidade local e seletor explícito de cinco estados. Testes em `tests/unit/App.test.tsx` verificam cinco cards, conversão sem rede, busca local e recuperação manual; `tests/unit/UnitToggle.test.tsx` verifica radios controlados por teclado. O protótipo não conclui integração real, persistência ou concorrência. A abertura com mock é exclusiva desta etapa demonstrativa e substitui temporariamente o shell vazio de T-40.
 
