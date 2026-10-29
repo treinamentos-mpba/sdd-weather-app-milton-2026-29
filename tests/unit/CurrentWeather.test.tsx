@@ -1,8 +1,11 @@
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import CurrentWeather from '../../src/components/CurrentWeather';
+import UnitToggle from '../../src/components/UnitToggle';
 import { mockWeatherData } from '../../src/mocks/weather';
-import type { City, CurrentWeather as CurrentWeatherData } from '../../src/types/weather';
+import type { City, CurrentWeather as CurrentWeatherData, Unit } from '../../src/types/weather';
 
 const location = mockWeatherData.location;
 if (location.kind !== 'city' || mockWeatherData.current === null) {
@@ -19,6 +22,33 @@ function expectMetric(label: string, value: string) {
 }
 
 describe('CurrentWeather', () => {
+  it('converte 0 °C em 32 °F ao clicar no seletor de unidade', async () => {
+    const user = userEvent.setup();
+
+    function WeatherWithUnitToggle() {
+      const [unit, setUnit] = useState<Unit>('celsius');
+
+      return (
+        <>
+          <UnitToggle unit={unit} onChange={setUnit} />
+          <CurrentWeather city={city} current={{ ...current, temperatureC: 0 }} unit={unit} />
+        </>
+      );
+    }
+
+    render(<WeatherWithUnitToggle />);
+    const weather = within(screen.getByRole('region', { name: 'Clima em Salvador' }));
+    expect(screen.getByRole('radio', { name: 'Celsius' })).toBeChecked();
+    expect(weather.getByText('0 °C', { exact: false })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('radio', { name: 'Fahrenheit' }));
+
+    expect(screen.getByRole('radio', { name: 'Fahrenheit' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Celsius' })).not.toBeChecked();
+    expect(weather.getByText('32 °F', { exact: false })).toBeInTheDocument();
+    expect(weather.queryByText(/°C/)).not.toBeInTheDocument();
+  });
+
   it('apresenta mock e converte somente temperaturas ao trocar unit', () => {
     const { rerender } = render(<CurrentWeather city={city} current={current} unit="celsius" />);
 
