@@ -44,56 +44,131 @@ As três personas têm a mesma prioridade no MVP. As metas de usabilidade são h
 
 ## Acceptance Criteria
 
-Os critérios abaixo são verificáveis por story e cobrem todos os requisitos funcionais. Dados de referência controlados podem ser usados na validação para evitar depender de variações meteorológicas reais.
+Os critérios abaixo seguem Given/When/Then (precondição/ação/resultado), por story e requisito funcional. Usar respostas controladas do provedor, relógio e permissões simulados para tornar os cenários reproduzíveis. Regras ainda pendentes em Open Questions não são assumidas como aprovadas.
 
 ### US-01 — Buscar e selecionar cidade (RF-01)
 
-- **CA-01.1:** dada uma consulta válida para uma cidade disponível no provedor, ao buscar, são apresentados os resultados correspondentes; cidades fora do Brasil também podem ser encontradas.
-- **CA-01.2:** dados resultados homônimos com região/estado e país disponíveis, a lista apresenta essas informações para distinguir os locais antes da seleção.
-- **CA-01.3:** ao selecionar um resultado, o local identificado na consulta meteorológica corresponde ao resultado escolhido, sem substituir silenciosamente por outro homônimo.
+- **CA-01.1 — Busca global**
+  - **Given:** o provedor retorna Paris, França, para a busca “Paris”.
+  - **When:** a pessoa realiza essa busca.
+  - **Then:** Paris, França, aparece entre os resultados selecionáveis.
+- **CA-01.2 — Cidades homônimas**
+  - **Given:** o provedor retorna cidades homônimas com região/estado e país.
+  - **When:** os resultados são apresentados.
+  - **Then:** cada resultado mostra nome, região/estado e país correspondentes à resposta, antes da seleção.
+- **CA-01.3 — Identidade da cidade**
+  - **Given:** existem dois resultados homônimos em regiões diferentes.
+  - **When:** a pessoa seleciona um deles e a consulta meteorológica termina com sucesso.
+  - **Then:** a localização consultada e o local identificado na interface correspondem ao resultado selecionado, não ao outro homônimo.
 
 ### US-02 — Consultar clima atual (RF-02)
 
-- **CA-02.1:** dada uma resposta válida e completa para a cidade escolhida, a interface identifica o local e apresenta temperatura, sensação térmica, condição meteorológica, umidade e velocidade do vento correspondentes aos dados recebidos.
-- **CA-02.2:** temperatura e sensação térmica identificam °C ou °F conforme a unidade ativa; umidade identifica % e vento identifica km/h.
+- **CA-02.1 — Condições atuais**
+  - **Given:** uma cidade selecionada e uma resposta controlada com 20 °C, sensação de 18 °C, condição de céu limpo, umidade de 60% e vento de 10 km/h.
+  - **When:** a consulta termina com sucesso com Celsius ativo.
+  - **Then:** a interface identifica a cidade e apresenta os cinco valores e a condição correspondentes à resposta.
+- **CA-02.2 — Unidades identificadas**
+  - **Given:** condições atuais carregadas e uma unidade de temperatura ativa, Celsius ou Fahrenheit.
+  - **When:** os dados são apresentados.
+  - **Then:** temperatura e sensação térmica identificam °C ou °F conforme a unidade ativa, umidade identifica % e vento identifica km/h.
 
 ### US-03 — Consultar previsão (RF-03)
 
-- **CA-03.1:** dada uma resposta completa, são apresentados exatamente cinco dias consecutivos, começando pela data atual no fuso da cidade consultada, com datas identificadas.
-- **CA-03.2:** cada dia apresenta condição meteorológica, mínima, máxima, probabilidade de precipitação, umidade média e vento máximo, com unidades identificadas e valores coerentes com os dados de referência.
-- **CA-03.3:** quando a data da cidade difere da data do dispositivo, o primeiro dia da previsão segue a cidade, não o dispositivo.
+- **CA-03.1 — Período de cinco dias**
+  - **Given:** o relógio indica 29/10/2026 na cidade consultada e o provedor retorna a previsão completa do período.
+  - **When:** a previsão é apresentada.
+  - **Then:** são exibidos exatamente cinco dias, identificados como 29/10, 30/10, 31/10, 01/11 e 02/11, em ordem cronológica.
+- **CA-03.2 — Dados por dia**
+  - **Given:** uma resposta controlada com condição, mínima, máxima, probabilidade de precipitação, umidade média e vento máximo para cada um dos cinco dias.
+  - **When:** a previsão é apresentada.
+  - **Then:** cada dia exibe esses seis dados correspondentes à resposta; temperaturas identificam a unidade ativa, probabilidade e umidade identificam % e vento identifica km/h.
+- **CA-03.3 — Fuso da cidade**
+  - **Given:** o mesmo instante corresponde a 30/10/2026 no dispositivo e a 29/10/2026 na cidade consultada.
+  - **When:** a previsão é apresentada.
+  - **Then:** o primeiro dia exibido é 29/10/2026 e os demais são os quatro dias seguintes no fuso da cidade.
 
 ### US-04 — Alternar unidade (RF-04)
 
-- **CA-04.1:** em uma primeira visita sem preferência salva, temperaturas são apresentadas em Celsius.
-- **CA-04.2:** ao alternar a unidade, temperatura atual, sensação térmica e mínimas/máximas da previsão passam a usar a unidade escolhida e seu rótulo, sem misturar °C e °F.
-- **CA-04.3:** com dados de referência equivalentes a 0 °C, ao escolher Fahrenheit, o valor exibido corresponde a 32 °F; ao voltar, corresponde a 0 °C.
-- **CA-04.4:** alternar temperatura não altera vento em km/h nem umidade e probabilidade de precipitação em %.
+- **CA-04.1 — Unidade inicial**
+  - **Given:** não há preferência de temperatura salva no navegador.
+  - **When:** uma consulta meteorológica termina com sucesso.
+  - **Then:** temperatura atual, sensação térmica e mínimas/máximas são apresentadas em Celsius.
+- **CA-04.2 — Alternância de todas as temperaturas**
+  - **Given:** condições atuais e previsão carregadas em Celsius.
+  - **When:** a pessoa seleciona Fahrenheit.
+  - **Then:** temperatura atual, sensação térmica e mínimas/máximas dos cinco dias passam a exibir os valores equivalentes em °F, sem temperaturas remanescentes em °C.
+- **CA-04.3 — Conversão de referência e retorno**
+  - **Given:** um valor de referência de 0 °C apresentado na consulta.
+  - **When:** a pessoa seleciona Fahrenheit e depois retorna a Celsius.
+  - **Then:** o valor é apresentado como 32 °F após a primeira ação e 0 °C após a segunda.
+- **CA-04.4 — Outras unidades preservadas**
+  - **Given:** vento de 10 km/h, umidade de 60% e probabilidade de precipitação de 40% carregados.
+  - **When:** a pessoa alterna a unidade de temperatura.
+  - **Then:** esses valores e unidades permanecem 10 km/h, 60% e 40%.
 
 ### US-05 — Entender estados e recuperar falhas (RF-05)
 
-- **CA-05.1:** enquanto uma consulta está pendente, a interface informa carregamento e permanece operável.
-- **CA-05.2:** dada uma busca válida sem correspondências, a interface informa ausência de resultados e orienta a realizar outra busca, sem apresentar esse estado como falha de rede.
-- **CA-05.3:** diante de falha de rede ou do provedor, a interface informa o erro e disponibiliza nova tentativa; após recuperação do serviço, essa ação permite concluir a consulta.
-- **CA-05.4:** sem conexão, uma consulta não apresenta previsão armazenada como resultado atual nem promete funcionamento offline.
+- **CA-05.1 — Carregamento**
+  - **Given:** uma consulta foi iniciada e sua resposta está retida pelo ambiente de teste.
+  - **When:** a requisição permanece pendente e a pessoa edita o campo de busca.
+  - **Then:** a indicação de carregamento permanece visível e o campo aceita a edição.
+- **CA-05.2 — Busca sem correspondências**
+  - **Given:** o provedor responde com sucesso e uma lista vazia para uma busca válida.
+  - **When:** a resposta é apresentada.
+  - **Then:** a interface informa ausência de resultados e orienta uma nova busca, sem indicar falha de rede.
+- **CA-05.3 — Erro e nova tentativa**
+  - **Given:** a primeira consulta falha por erro de rede ou do provedor e a próxima resposta controlada é válida.
+  - **When:** o erro é recebido e a pessoa aciona a nova tentativa oferecida.
+  - **Then:** a interface informa a falha antes da ação, realiza outra consulta após a ação e apresenta o resultado bem-sucedido.
+- **CA-05.4 — Ausência de suporte offline**
+  - **Given:** a aplicação está aberta sem dados meteorológicos carregados e a conexão está indisponível.
+  - **When:** a pessoa solicita uma consulta e a requisição falha.
+  - **Then:** a interface apresenta erro com nova tentativa, sem apresentar previsão armazenada como resultado atual ou indicar que a consulta offline foi bem-sucedida.
 
 ### US-06 — Usar localização opcional (RF-06)
 
-- **CA-06.1:** ao abrir a aplicação sem acionar a opção de localização, não é feita solicitação de geolocalização, mesmo que o navegador já tenha permissão concedida.
-- **CA-06.2:** ao acionar a opção, a pessoa recebe informação sobre o uso da localização para consulta ao provedor; com permissão concedida e localização disponível, a consulta usa essa localização.
-- **CA-06.3:** se a permissão for negada ou o recurso estiver indisponível, a interface explica a impossibilidade e mantém a busca manual utilizável.
+- **CA-06.1 — Sem solicitação automática**
+  - **Given:** o navegador tem permissão de localização concedida ou ainda não definida.
+  - **When:** a pessoa abre a aplicação e não aciona a opção de localização.
+  - **Then:** a aplicação não solicita acesso à geolocalização em nenhum dos dois estados de permissão.
+- **CA-06.2 — Localização por ação explícita**
+  - **Given:** a opção de localização está disponível e o navegador fornecerá uma coordenada controlada após a autorização necessária.
+  - **When:** a pessoa aciona a opção e concede permissão, se solicitada.
+  - **Then:** a interface informa o uso da localização para consulta ao provedor e a consulta meteorológica usa a coordenada fornecida.
+- **CA-06.3 — Recusa ou indisponibilidade**
+  - **Given:** o navegador nega a permissão ou informa que a geolocalização está indisponível.
+  - **When:** a pessoa aciona a opção de localização.
+  - **Then:** a interface explica a impossibilidade e permite realizar uma busca manual por cidade em ambos os casos.
 
 ### US-07 — Lembrar preferências (RF-07)
 
-- **CA-07.1:** após selecionar uma cidade e alterar a unidade, ao retornar ao mesmo navegador com armazenamento local disponível, a cidade e a unidade salvas estão disponíveis sem exigir conta.
-- **CA-07.2:** a inspeção dos dados persistidos pela aplicação encontra somente a identificação da cidade e a unidade; não encontra coordenadas precisas obtidas pela geolocalização nem dados meteorológicos em cache.
-- **CA-07.3:** salvar essas preferências não as envia para persistência em servidor da aplicação.
+- **CA-07.1 — Preferências entre visitas**
+  - **Given:** a pessoa selecionou uma cidade, escolheu Fahrenheit e o armazenamento local está disponível.
+  - **When:** a aplicação é fechada e reaberta no mesmo navegador, sem remover os dados salvos.
+  - **Then:** a identificação da cidade e a preferência Fahrenheit são recuperadas sem exigir conta; o disparo automático de nova consulta permanece sujeito a OQ-05.
+- **CA-07.2 — Minimização de dados persistidos**
+  - **Given:** uma cidade foi selecionada, a unidade foi alterada e uma consulta por geolocalização também foi realizada.
+  - **When:** os dados persistidos pela aplicação no navegador são inspecionados.
+  - **Then:** os únicos dados persistidos são nome/contexto regional da cidade e unidade; não há coordenadas precisas da geolocalização nem dados meteorológicos em cache.
+- **CA-07.3 — Sem persistência no servidor**
+  - **Given:** o tráfego de rede está sendo observado durante o salvamento de preferências.
+  - **When:** a pessoa seleciona uma cidade e altera a unidade.
+  - **Then:** não há envio dessas preferências para persistência em servidor da aplicação; consultas meteorológicas ao provedor não constituem persistência de preferências.
 
 ### US-08 — Atualizar consulta (RF-08)
 
-- **CA-08.1:** ao selecionar cidade ou solicitar localização com sucesso, é iniciada a obtenção dos dados meteorológicos correspondentes.
-- **CA-08.2:** ao atualizar manualmente com sucesso, são apresentados os dados da nova resposta e o horário da consulta correspondente.
-- **CA-08.3:** aguardar com a tela aberta, sem nova ação da pessoa, não dispara atualização periódica em segundo plano.
+- **CA-08.1 — Obtenção por seleção ou localização**
+  - **Given:** a aplicação permite selecionar cidade ou consultar por localização.
+  - **When:** a pessoa seleciona uma cidade ou solicita localização e o navegador a fornece.
+  - **Then:** uma consulta meteorológica é iniciada para o local correspondente em cada uma das duas alternativas.
+- **CA-08.2 — Atualização manual e horário**
+  - **Given:** uma consulta anterior está carregada e o relógio controlado marca 14h no fuso da cidade.
+  - **When:** a pessoa solicita atualização manual e a nova resposta válida é recebida às 14h.
+  - **Then:** a interface apresenta os valores da nova resposta e identifica 14h como horário da consulta, não como horário de observação meteorológica.
+- **CA-08.3 — Sem atualização periódica**
+  - **Given:** a consulta terminou, não há requisições pendentes e o relógio do teste pode ser avançado.
+  - **When:** o relógio avança 30 minutos com a aplicação aberta, sem ações da pessoa.
+  - **Then:** nenhuma nova consulta meteorológica é iniciada automaticamente nesse intervalo.
 
 ## Non-Functional Requirements
 
