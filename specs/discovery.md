@@ -30,11 +30,17 @@ A empresa precisa de uma aplicação para que usuários consultem o clima de cid
 
 | Risco | Probabilidade | Impacto | Mitigação |
 |---|---|---|---|
-| Indisponibilidade ou limite de requisições do provedor de clima | Média | Alto: usuários podem ficar sem dados atuais ou previsão | Tratar erros e limites, evitar requisições repetidas e avaliar cache e alternativa de provedor. |
-| Busca retorna cidades homônimas ou uma localização incorreta | Média | Alto: previsão exibida pode corresponder a outro local | Exibir contexto suficiente para diferenciar resultados, como estado/região e país, antes da seleção. |
-| Conexão lenta ou ausente impede a atualização dos dados | Alta | Médio: consulta demora ou falha | Mostrar carregamento, mensagem clara de erro e opção de tentar novamente; avaliar cache para consultas futuras. |
-| Diferenças de tela e interação entre dispositivos prejudicam o uso móvel | Média | Médio: informações ou controles ficam difíceis de acessar | Validar layouts em diferentes larguras e testar os fluxos principais em viewport móvel. |
-| Dados meteorológicos podem ser interpretados como garantia de condições futuras | Baixa | Alto: decisões do usuário podem ser afetadas | Identificar período e local da previsão e comunicar que se trata de uma estimativa fornecida pelo serviço. |
+| Indisponibilidade, limite de requisições ou mudança no provedor de clima | Média | Alto: consultas podem falhar ou ficar sem dados | Tratar erros e limites, evitar requisições repetidas, monitorar falhas e definir se haverá cache ou provedor alternativo. |
+| Dados desatualizados ou interpretados como atuais | Média | Alto: decisões podem ser tomadas com informações incorretas | Exibir horário da última atualização, definir frequência e idade máxima dos dados e indicar quando forem estimativas ou estiverem desatualizados. |
+| Seleção de cidade homônima ou localização incorreta | Média | Alto: o usuário recebe a previsão de outro local | Mostrar região/estado e país nos resultados e exigir confirmação quando houver ambiguidade. |
+| Escopo do produto indefinido (detalhes da previsão, público e métricas de sucesso) | Alta | Alto: retrabalho e dificuldade para avaliar se o app atende à necessidade | Validar as perguntas em aberto com usuários e stakeholders; priorizar um conjunto mínimo de dados e métricas antes de expandir o escopo. |
+| Desempenho inadequado em redes lentas ou dispositivos móveis | Média | Alto: abandono ou dificuldade para consultar rapidamente | Medir a meta de latência em condições representativas, manter a interface interativa durante carregamentos e reduzir chamadas desnecessárias. |
+| Layout ou controles inacessíveis em alguns dispositivos ou para pessoas com deficiência | Média | Alto: parte dos usuários não consegue concluir a consulta | Validar em larguras variadas e com teclado e tecnologias assistivas; adotar WCAG 2.2 AA como critério de aceite. |
+| Falha de rede ou do serviço sem recuperação clara | Alta | Médio/alto: consulta interrompida e perda de confiança | Apresentar erro compreensível, permitir nova tentativa e definir comportamento para dados em cache, caso sejam suportados. |
+| Geolocalização ou coleta de dados sem expectativa clara do usuário | Baixa/média | Alto: perda de confiança e possível exposição de dados pessoais | Solicitar permissão apenas quando necessário, explicar seu uso, oferecer busca manual e definir minimização e retenção de dados. |
+| Datas, fusos ou unidades apresentados de forma inconsistente | Média | Médio/alto: previsão pode ser mal interpretada | Definir convenções de localização, associar a previsão ao fuso da cidade e identificar claramente as unidades exibidas. |
+| Meta de disponibilidade sem medição ou responsável operacional | Média | Alto: falhas podem persistir sem detecção ou resposta | Definir escopo e método de medição, monitoramento, responsáveis e procedimento de resposta a incidentes. |
+| Previsão interpretada como garantia das condições futuras | Baixa | Alto: decisões do usuário podem ser afetadas | Identificar período e local da previsão e comunicar que se trata de uma estimativa fornecida pelo serviço. |
 
 ## Perguntas em Aberto
 
