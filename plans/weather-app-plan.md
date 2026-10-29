@@ -4,29 +4,54 @@ Fonte da verdade: [weather-app-spec.md](../specs/weather-app-spec.md). Este docu
 
 ## Architecture
 
-Uma SPA de tela única com três responsabilidades: apresentação, coordenação de estado e acesso a recursos externos. Sem router, estado global de terceiros, backend intermediário ou camada de repositórios.
+Uma SPA de tela única com quatro responsabilidades: apresentação (`components/`), orquestração/estado (`hooks/`), acesso a dados (`services/`) e transformações puras (`lib/`). `types/` contém somente contratos compartilhados. Sem router, estado global de terceiros, backend intermediário, repositórios ou hierarquias de adaptadores.
 
 ```text
-Componentes React
-        ↕ props e ações
-Hook controlador + reducer local
-        ↕ contratos de domínio
-Serviços de geocoding / forecast / localização / preferências
-        ↕
-Open-Meteo HTTPS / APIs do navegador
+main.tsx → App.tsx (composição)
+              ├─ components/ (props e callbacks)
+              └─ hooks/ → services/ → Open-Meteo / APIs do navegador
+                    └─ lib/ ← services/ e components/
 
-Funções puras: validação, normalização, datas, unidades e códigos WMO
+types/ ← contratos usados pelas demais camadas
 ```
+
+As setas representam dependências de importação, não o retorno de dados. `App` chama o controlador e distribui estado e ações; os componentes de apresentação não precisam importar hooks de domínio.
 
 | Decisão | Responsabilidade e rastreabilidade |
 |---|---|
 | Uma tela sem navegação por coordenadas ou cidade | Busca, seleção, consulta e preferências no mesmo fluxo; evita expor localização na URL. RF-01 a RF-08, RNF-06. |
 | Componentes recebem dados normalizados | Não conhecem JSON do provedor nem fazem fetch. RF-02/RF-03, EC-10 a EC-14. |
 | Controlador local coordena efeitos e intenções | Busca independente da consulta meteorológica; respostas antigas não substituem intenção vigente. RF-05/RF-08, EC-15 a EC-17, EC-32/EC-33. |
-| Adaptadores pequenos para navegador e provedor | Limites de validação e falha explícitos, substituíveis nos testes sem framework de injeção. RF-01/RF-05/RF-06/RF-07. |
+| Serviços como funções diretas | Cada serviço concentra uma API externa ou recurso do navegador; sem classe, repository ou adaptador extra. Validação pura é reutilizada de `lib/`. RF-01/RF-05/RF-06/RF-07. |
+| Funções puras separadas dos efeitos | Normalização, datas e unidades recebem entradas explícitas e retornam resultados sem rede, armazenamento ou relógio implícito. RF-02/RF-03/RF-04/RF-08. |
 | Estado meteorológico somente em memória | Atualização com erro pode preservar dados da mesma localização, sem persistir previsão. RF-05/RF-08, EC-25/EC-26. |
 
 `App` compõe busca, resultados, controles de unidade/localização/atualização, preferências lembradas, condições atuais, cinco cartões diários e mensagens. Componentes de aviso/atribuição são compartilhados, sem modal desnecessário. HTML semântico, foco estável e estados anunciados são parte da arquitetura de apresentação, não acabamento posterior (RNF-01/RNF-02).
+
+### Dependências permitidas
+
+| Origem | Pode importar | Não pode importar/acessar diretamente |
+|---|---|---|
+| `main.tsx` | `App`, estilos e React para inicialização. | Serviços e regras de negócio. |
+| `App.tsx` | Componentes, hook controlador e tipos; helpers puros se necessários à composição. | Fetch, geolocalização e armazenamento. |
+| `components/` | Outros componentes, `lib/`, `types/` e React para interação visual. | `hooks/` de domínio, `services/`, fetch, geolocalização e armazenamento. |
+| `hooks/` | `services/`, `lib/`, `types/`, React e módulos locais de estado. | `components/`, `App` ou detalhes de marcação. |
+| `services/` | `lib/`, `types/` e helper HTTP interno compartilhado pelos serviços de rede. | React, hooks, componentes e importações entre serviços de domínio para coordenar fluxos. |
+| `lib/` | `types/` e helpers puros locais em uma única direção. | React, hooks, serviços, DOM, rede, armazenamento e leitura implícita do relógio. |
+| `types/` | Outros contratos de tipos, sem ciclos. | Qualquer módulo executável de outra camada. |
+
+Usar `import type` para contratos; tipos não iniciam efeitos. A composição de serviços pertence aos hooks: por exemplo, `geolocation.ts` não chama `forecast.ts`. `http.ts` não importa serviços de domínio. O reducer pode permanecer em `hooks/` por coesão com o estado, mas é puro e importa somente tipos e helpers puros.
+
+Evitar arquivos `index.ts` que reexportem camadas inteiras e ciclos ocultos. Extrair helper para `lib/` somente quando for uma regra pura ou reutilizada, não para criar uma função intermediária sem responsabilidade. Revisão de imports verifica essas fronteiras; não adicionar ferramenta de arquitetura ao MVP.
+
+### Testabilidade, segurança e manutenção
+
+- **Apresentação:** testes com props e callbacks controlados verificam conteúdo, teclado e anúncios sem rede ou armazenamento. Alterar layout não modifica contratos HTTP.
+- **Orquestração:** testar reducer/hook com serviços substituídos, relógio explícito e promessas controladas; validar timeout, intenção mais recente e exclusão com resposta pendente sem depender do DOM completo.
+- **Acesso a dados:** testar serviços com fetch, geolocalização e armazenamento simulados; conferir parâmetros, classificação de falhas e persistência mínima em uma única fronteira de efeitos.
+- **Regras puras:** tabelas de entradas/saídas para datas, códigos WMO, `null`/zero e arredondamento; executar sem React, navegador ou API real.
+- **Segurança:** serviços recebem JSON como `unknown`; `lib/` valida e normaliza antes de alcançar a UI. Coordenadas ficam somente no estado transitório e na requisição autorizada; projeção de preferências impede serializar dados meteorológicos ou coordenadas. Não registrar entrada sensível nem renderizar HTML externo.
+- **Manutenção:** cada regra tem um responsável. Sem cópias da conversão em componentes, normalização em hooks ou persistência em efeitos genéricos. Mudanças no provedor afetam serviços/normalização; mudanças de UX afetam componentes e coordenação.
 
 ## Tech Stack
 
@@ -78,7 +103,7 @@ src/
     weather.ts
     errors.ts
     state.ts
-  utils/
+  lib/
     validation.ts
     normalizeWeather.ts
     dates.ts
@@ -91,7 +116,20 @@ tests/
   fixtures/
 ```
 
-Um componente por arquivo; serviços não importam React. Tipos comuns ficam em `types/`; funções puras, incluindo reducer, não acessam rede, relógio ou armazenamento. Relógio e chamadas são fornecidos nos pontos de efeito para controle nos testes. Não criar classes ou interfaces de infraestrutura que não tenham consumidor concreto.
+| Pasta/arquivo | Responsabilidade |
+|---|---|
+| `components/` | Renderização semântica, estados visuais e callbacks. `WeatherPanel` compõe cartões; `QueryFeedback` apresenta mensagens; `WeatherAttribution` concentra créditos e aviso de estimativas. |
+| `hooks/useWeatherApp.ts` | Coordena busca, seleção, localização, atualização, preferências e timers de apresentação; expõe estado e ações a `App`. |
+| `hooks/weatherReducer.ts` | Transições puras e invariantes do estado, sem efeitos. |
+| `services/http.ts` | Transporte comum: HTTPS, deadline, status e leitura segura da resposta. Sem estado React ou regras de seleção. |
+| `services/geocoding.ts`, `forecast.ts` | Parâmetros e interpretação dos contratos externos, usando validação/normalização de `lib/`. |
+| `services/geolocation.ts`, `preferences.ts` | Acesso exclusivo às APIs do navegador, falhas explícitas e armazenamento mínimo. |
+| `lib/validation.ts`, `normalizeWeather.ts` | Validação de estruturas/domínios e transformação pura do JSON em modelo interno. |
+| `lib/dates.ts`, `units.ts`, `weatherCodes.ts` | Calendário/fusos e atualidade com `now` fornecido; conversão/arredondamento; mapeamento WMO. |
+| `types/` | Contratos de clima, falhas e estado, sem dependências executáveis. |
+| `App.tsx`, `main.tsx`, `index.css` | Composição, inicialização e estilos globais mínimos, respectivamente. |
+
+Um componente por arquivo. Relógio e chamadas são fornecidos nos pontos de efeito para controle nos testes. A árvore é um mapa de responsabilidades, não uma exigência de criar arquivos vazios: dividir apenas módulos com responsabilidade concreta. Nenhuma pasta `utils/` paralela a `lib/`, evitando dois destinos para as mesmas regras puras. Não criar classes ou interfaces de infraestrutura sem consumidor concreto.
 
 ## Data Model
 
@@ -261,6 +299,39 @@ Resposta esperada: objeto JSON com `results` opcional. Ausência de `results` ou
 
 Cada resultado precisa de nome, identificador e coordenadas válidos para consulta; campos opcionais ausentes viram `null`. Itens inválidos não ficam selecionáveis; informar resposta parcial de busca se houver itens descartados. Se havia resultados mas nenhum é utilizável, retornar `invalid-response`. Preservar ordem dos válidos, limitados a dez. Se rótulos nome/região/país forem indistinguíveis, sinalizar limitação nesses itens e pedir termo mais específico, sem autoescolha (EC-05).
 
+Exemplo de URL:
+
+`https://geocoding-api.open-meteo.com/v1/search?name=Berlin&count=10&language=pt&format=json`
+
+Resposta ilustrativa resumida, com um resultado:
+
+```json
+{
+  "results": [
+    {
+      "id": 2950159,
+      "name": "Berlim",
+      "latitude": 52.52437,
+      "longitude": 13.41053,
+      "admin1": "Berlim",
+      "country": "Alemanha",
+      "country_code": "DE",
+      "timezone": "Europe/Berlin"
+    }
+  ]
+}
+```
+
+| Resposta | Destino no modelo | Regra |
+|---|---|---|
+| `results[i].id`, `.name` | `City.id`, `City.name` | Validar identificador inteiro e nome não vazio. |
+| `.latitude`, `.longitude` | `City.coordinates` | Validar coordenadas finitas e dentro dos limites WGS84. |
+| `.admin1`, `.country` | `City.region`, `City.country` | Ausência vira `null`; não inferir região ou país. |
+| `.timezone` | `City.timeZone` | Validar fuso IANA; ausência/inválido vira `null`. O forecast deve fornecer seu próprio fuso válido. |
+| Lista de resultados | `CitySearchResult.cities` | Somente itens utilizáveis, na ordem recebida; `partial` indica descarte de itens inválidos. |
+
+`country_code` não é persistido nem necessário ao modelo atual. `CityIdentity` é somente a projeção de `name`, `region` e `country`, sem ID, coordenadas ou fuso.
+
 ### Forecast — RF-02/RF-03/RF-08
 
 `GET https://api.open-meteo.com/v1/forecast`
@@ -277,6 +348,80 @@ Cada resultado precisa de nome, identificador e coordenadas válidos para consul
 | `timeformat` | `iso8601`: datas diárias mantidas como rótulos locais. |
 
 Origem: `current`, `current_units`, `daily`, `daily_units`, `timezone`. JSON externo é `unknown`; não expor DTO bruto nos componentes.
+
+Exemplo de URL para a cidade retornada pelo geocoding:
+
+`https://api.open-meteo.com/v1/forecast?latitude=52.52437&longitude=13.41053&current=temperature_2m,apparent_temperature,weather_code,relative_humidity_2m,wind_speed_10m&daily=weather_code,temperature_2m_min,temperature_2m_max,precipitation_probability_max,relative_humidity_2m_mean,wind_speed_10m_max&forecast_days=5&timezone=auto&temperature_unit=celsius&wind_speed_unit=kmh&timeformat=iso8601`
+
+Resposta ilustrativa: demais metadados foram omitidos, mas os cinco dias e as unidades necessárias foram mantidos. Os valores não representam uma previsão real.
+
+```json
+{
+  "latitude": 52.52,
+  "longitude": 13.42,
+  "timezone": "Europe/Berlin",
+  "utc_offset_seconds": 3600,
+  "current_units": {
+    "time": "iso8601",
+    "interval": "seconds",
+    "temperature_2m": "°C",
+    "apparent_temperature": "°C",
+    "weather_code": "wmo code",
+    "relative_humidity_2m": "%",
+    "wind_speed_10m": "km/h"
+  },
+  "current": {
+    "time": "2026-10-29T14:00",
+    "interval": 900,
+    "temperature_2m": 12.3,
+    "apparent_temperature": 10.1,
+    "weather_code": 3,
+    "relative_humidity_2m": 70,
+    "wind_speed_10m": 15
+  },
+  "daily_units": {
+    "time": "iso8601",
+    "weather_code": "wmo code",
+    "temperature_2m_min": "°C",
+    "temperature_2m_max": "°C",
+    "precipitation_probability_max": "%",
+    "relative_humidity_2m_mean": "%",
+    "wind_speed_10m_max": "km/h"
+  },
+  "daily": {
+    "time": ["2026-10-29", "2026-10-30", "2026-10-31", "2026-11-01", "2026-11-02"],
+    "weather_code": [3, 61, 2, 3, 1],
+    "temperature_2m_min": [8, 7, 6, 7, 5],
+    "temperature_2m_max": [14, 12, 13, 11, 12],
+    "precipitation_probability_max": [20, 70, 30, 40, 10],
+    "relative_humidity_2m_mean": [70, 80, 65, 75, 60],
+    "wind_speed_10m_max": [20, 25, 18, 22, 15]
+  }
+}
+```
+
+| Resposta | Destino no modelo | Regra |
+|---|---|---|
+| `current.temperature_2m` | `CurrentWeather.temperatureC` | Celsius validado; conversão somente na apresentação. |
+| `current.apparent_temperature` | `CurrentWeather.apparentTemperatureC` | Sensação térmica, não mínima/máxima. |
+| `current.weather_code` | `CurrentWeather.weatherCode` | Validar código WMO conhecido; desconhecido vira `null`. |
+| `current.relative_humidity_2m` | `CurrentWeather.relativeHumidityPct` | Número de 0 a 100; zero é válido. |
+| `current.wind_speed_10m` | `CurrentWeather.windSpeedKmh` | Velocidade não negativa em km/h. |
+| `current.time` | `CurrentWeather.referenceTimeMs` | Resolver instante no fuso retornado conforme regra abaixo; `interval` não é idade nem horário de conclusão da consulta. |
+| `daily.time[i]` | `ForecastDay.date` | Data local válida; não converter para o fuso do dispositivo. |
+| `daily.weather_code[i]` | `ForecastDay.weatherCode` | Condição mais severa prevista para o dia, segundo o provedor. |
+| `daily.temperature_2m_min[i]`, `.temperature_2m_max[i]` | `ForecastDay.minTemperatureC`, `.maxTemperatureC` | Extremos diários em Celsius. |
+| `daily.precipitation_probability_max[i]` | `ForecastDay.maxPrecipitationProbabilityPct` | Probabilidade máxima diária em %, não volume de chuva. |
+| `daily.relative_humidity_2m_mean[i]` | `ForecastDay.meanRelativeHumidityPct` | Média diária fornecida pelo provedor, sem agregação local. |
+| `daily.wind_speed_10m_max[i]` | `ForecastDay.maxWindSpeedKmh` | Vento máximo diário em km/h, não rajada. |
+| `timezone` | `WeatherData.timeZone` | Fuso IANA válido; não substituir pelo fuso do dispositivo. |
+| Período diário recebido | `WeatherData.periodStart`, `.forecast` | Cinco datas esperadas, com lacunas marcadas conforme a spec. |
+| Campos atuais normalizados | `WeatherData.current` | `null` se nenhum campo meteorológico atual for utilizável. |
+| Alvo enviado, não coordenadas da grade retornada | `WeatherData.location` | Preservar identidade da cidade selecionada ou alvo `device`. |
+| Relógio no aceite da resposta utilizável | `WeatherData.completedAtMs` | Não existe no JSON; gerado pela aplicação somente para a intenção vigente. |
+| Validação de campos e seções | `WeatherData.partial` | Derivado de ausências/invalidações, não de um campo do provedor. |
+
+Validar cada campo contra sua unidade antes do mapeamento. Ausência, `null` ou valor inválido vira indisponibilidade explícita; se ambas as seções ficarem sem dados utilizáveis, retornar erro. A unidade escolhida pela pessoa (`Unit`) não vem da API nem altera os valores de origem.
 
 - Referência atual com offset é convertida em instante; sem offset, resolver no fuso IANA retornado somente quando há uma correspondência única. O helper deve verificar a volta para os mesmos componentes locais, considerando offsets antes/depois de transições; zero ou múltiplos instantes correspondentes produzem `null`. Nunca usar `new Date` sobre data local sem offset presumindo fuso do dispositivo. Não aplicar `utc_offset_seconds` fixo a todo o período.
 - Datas diárias válidas e ordenadas definem a data inicial recebida. Se o início estiver ausente, converter o instante capturado no início da requisição para a data local do fuso válido retornado para construir placeholders, sem associar valores a datas inexistentes. Sem fuso válido, previsão indisponível, conforme EC-43.
