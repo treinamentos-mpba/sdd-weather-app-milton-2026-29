@@ -98,8 +98,8 @@ for (const width of [320, 390, 768, 1366, 1920]) {
     await expect(page.getByRole('article')).toHaveCount(5);
     await check();
     const columns = await page
-      .locator('main ul')
-      .last()
+      .getByRole('region', { name: 'Previsão de 5 dias', exact: true })
+      .getByRole('list')
       .evaluate((grid) => getComputedStyle(grid).gridTemplateColumns.split(' ').length);
     expect(columns).toBe(width >= 1024 ? 5 : width >= 640 ? 3 : 2);
     await page.getByRole('radio', { name: 'Fahrenheit' }).click();
@@ -111,6 +111,7 @@ for (const width of [320, 390, 768, 1366, 1920]) {
 test('skip link, busca e unidade preservam foco por teclado', async ({ page }) => {
   await mockApi(page);
   await page.goto('/');
+  await expect(page.getByRole('textbox', { name: 'Nome da cidade' })).toBeVisible();
   await page.keyboard.press('Tab');
   const skipLink = page.getByRole('link', { name: 'Pular para o conteúdo' });
   await expect(skipLink).toBeFocused();
@@ -165,6 +166,7 @@ test.describe('toque mobile', () => {
   test('busca, seleção e unidade funcionam por toque sem nova consulta', async ({ page }) => {
     const api = await mockApi(page);
     await page.goto('/');
+    await expect(page.getByRole('radio')).toHaveCount(2);
     for (const radio of await page.getByRole('radio').all()) {
       const bounds = await radio.boundingBox();
       expect(bounds?.width).toBeGreaterThanOrEqual(44);
