@@ -541,6 +541,8 @@ Cada ID aparece em uma única fatia; tarefas de fatias anteriores são reutiliza
 - **Arquivos prováveis:** `src/components/QueryFeedback.tsx`, `tests/components/QueryFeedback.test.tsx`.
 - **Rastreabilidade:** CA-05.1 a CA-05.4; EC-06 a EC-09, EC-29, EC-39.
 
+Entrega incremental de T-45/T-103: criar `src/components/states/LoadingState.tsx` (`message` opcional, status), `ErrorState.tsx` (`message`, `onRetry`, alerta e botão “Tentar novamente”) e `EmptyState.tsx` (`title`, `hint`, status). `tests/unit/States.test.tsx` verifica mensagens únicas, foco preservado, título/dica e recuperação manual por clique ou Tab/Enter, sem submissão de formulário. Integração em `QueryFeedback`, resposta parcial e bloqueio por prazo permanecem pendentes.
+
 ### T-46 — Apresentar condições atuais
 
 - **ID:** T-46

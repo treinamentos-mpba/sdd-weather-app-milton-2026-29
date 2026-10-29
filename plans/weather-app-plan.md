@@ -91,6 +91,10 @@ src/
     ForecastList.tsx
     QueryFeedback.tsx
     WeatherAttribution.tsx
+    states/
+      LoadingState.tsx
+      ErrorState.tsx
+      EmptyState.tsx
   hooks/
     useWeatherApp.ts
     weatherReducer.ts
@@ -587,6 +591,8 @@ Selecionar unidade altera apresentação e preferência local, sem fetch, mudan�
 | Rejeição assíncrona inesperada | Capturar no controlador, sair de loading e apresentar erro recuperável `unexpected` somente se a intenção ainda for vigente. Diagnóstico sanitizado, sem converter bug em sucesso ou falha conhecida de rede. | RF-05, RNF-04/RNF-06. |
 
 Usar mensagens de domínio centralizadas em pt-BR, com região de status anunciada e área de erro acessível. Não mover foco por chegada de resposta; busca permanece focada no cenário EC-29. Botões de repetição bloqueados por prazo expõem o motivo em texto acessível. Se o elemento focado deixar de existir após ação explícita, encaminhar para controle equivalente do fluxo.
+
+Os componentes de apresentação em `components/states/` recebem textos de domínio por props: `LoadingState` tem `message` opcional e `role="status"`; `ErrorState` recebe `message` e `onRetry`, com mensagem em `role="alert"` e botão de repetição fora do alerta; `EmptyState` recebe `title` e `hint`, anunciados juntos em `role="status"`. Não fazem rede, repetição automática nem movimentação de foco. `QueryFeedback` selecionará um estado por vez sem adicionar outra live region; bloqueios por prazo continuam responsabilidade dessa integração futura.
 
 ### Resposta parcial e recuperação
 
