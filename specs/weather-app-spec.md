@@ -33,14 +33,14 @@ As três personas têm a mesma prioridade no MVP. As metas de usabilidade são h
 
 | ID | User story | Requisito |
 |---|---|---|
-| US-01 | Como viajante, quero buscar uma cidade e distinguir locais homônimos para consultar o destino correto. | RF-01 |
+| US-01 | Como viajante que planeja os próximos dias, quero buscar uma cidade e distinguir locais homônimos para consultar o clima do destino correto. | RF-01 |
 | US-02 | Como pessoa que organiza a rotina diária, quero consultar as condições atuais da cidade para decidir o que vestir e como me deslocar. | RF-02 |
-| US-03 | Como viajante, quero consultar a previsão identificada para os cinco dias para planejar atividades e bagagem. | RF-03 |
-| US-04 | Como viajante, quero alternar a unidade de temperatura para interpretar os valores na unidade que conheço. | RF-04 |
-| US-05 | Como pessoa em mobilidade, quero entender se a consulta está carregando, não encontrou resultados ou falhou para saber o que fazer em seguida. | RF-05 |
-| US-06 | Como pessoa em mobilidade, quero consultar o clima pela localização do dispositivo, somente quando eu solicitar, para evitar digitar uma cidade sem perder o controle sobre minha localização. | RF-06 |
-| US-07 | Como pessoa que organiza a rotina diária, quero que o navegador lembre minha cidade e unidade para não precisar informá-las novamente a cada visita. | RF-07 |
-| US-08 | Como pessoa em mobilidade, quero atualizar a consulta e saber quando ela foi realizada para entender a referência temporal das informações. | RF-08 |
+| US-03 | Como viajante que planeja os próximos dias, quero consultar a previsão de hoje e dos quatro dias seguintes para planejar atividades e bagagem. | RF-03 |
+| US-04 | Como viajante que planeja os próximos dias, quero alternar entre Celsius e Fahrenheit para interpretar as temperaturas na unidade que conheço. | RF-04 |
+| US-05 | Como pessoa que consulta o clima em mobilidade, quero identificar se a consulta está carregando, não encontrou resultados ou falhou para saber se devo aguardar, buscar outra cidade ou tentar novamente. | RF-05 |
+| US-06 | Como pessoa que consulta o clima em mobilidade, quero solicitar a consulta pela localização do dispositivo para evitar digitar uma cidade e manter o controle sobre quando minha localização é utilizada. | RF-06 |
+| US-07 | Como pessoa que organiza a rotina diária, quero que o navegador lembre minha cidade e unidade de temperatura para reduzir a repetição de escolhas a cada visita. | RF-07 |
+| US-08 | Como pessoa que consulta o clima em mobilidade, quero atualizar manualmente os dados e ver o horário da consulta para saber quando as informações foram consultadas. | RF-08 |
 
 ## Acceptance Criteria
 
