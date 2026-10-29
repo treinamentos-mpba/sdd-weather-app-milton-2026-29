@@ -38,13 +38,26 @@ A empresa precisa de uma aplicação para que usuários consultem o clima de cid
 
 ## Perguntas em Aberto
 
-1. **Qual nível de detalhe deve ser exibido para o clima atual e para cada dia?** Impacto: define o conteúdo da interface, os dados necessários e a densidade visual.
-2. **A previsão de cinco dias deve incluir hoje ou os cinco dias seguintes?** Impacto: altera o intervalo consultado e a expectativa do usuário sobre o período coberto.
-3. **A busca deve aceitar apenas nomes de cidades ou também permitir geolocalização automática?** Impacto: influencia permissões, privacidade e o fluxo inicial de uso.
-4. **Como o usuário deve escolher entre cidades com o mesmo nome?** Impacto: sem contexto regional, pode consultar o local errado.
-5. **É necessário oferecer suporte a outros idiomas além de pt-BR?** Impacto: afeta tradução, formatação de datas e estratégia de localização.
-6. **A aplicação deve funcionar offline ou manter dados em cache?** Impacto: afeta disponibilidade percebida, armazenamento e indicação de atualidade dos dados.
-7. **Há requisitos de compatibilidade com navegadores específicos?** Impacto: define a matriz de navegadores e versões que deve ser validada.
+1. **Qual problema prioritário o app deve resolver e para quais públicos ou regiões ele será lançado?** Impacto: sem público e contexto prioritários, não é possível decidir quais tarefas, localidades, dispositivos e idiomas merecem precedência.
+2. **Como será medido o sucesso do produto (por exemplo, consultas concluídas, retorno de usuários ou satisfação)?** Impacto: sem métricas e uma linha de base, não será possível avaliar se a solução atende à necessidade ou orientar melhorias.
+3. **Quais informações compõem “condições atuais” e cada dia da previsão (temperatura mínima/máxima, sensação térmica, precipitação, vento, umidade, ícones etc.)?** Impacto: a interface, os dados exigidos do provedor e a densidade visual ficam indefinidos; exibir dados demais também pode prejudicar a consulta rápida.
+4. **A previsão cobre hoje e os quatro dias seguintes, como assumido, ou os cinco dias completos seguintes? Qual fuso horário define a virada do dia?** Impacto: sem confirmação, usuários podem interpretar incorretamente o período e as datas exibidas.
+5. **O que significa “atual” para o clima atual e com que frequência os dados devem ser atualizados? Deve haver atualização automática?** Impacto: sem uma regra de atualização e de idade máxima dos dados, informações antigas podem parecer atuais ou gerar requisições desnecessárias.
+6. **Qual nível de precisão e quais limitações dos dados são aceitáveis? A interface deve mostrar horário da última atualização, fonte ou aviso de estimativa?** Impacto: usuários podem confiar em informação desatualizada ou interpretar uma previsão como garantia; também ficam indefinidos os avisos necessários.
+7. **Quais países, regiões e localidades são cobertos, e em quais idiomas e convenções regionais o produto deve funcionar?** Impacto: afeta busca, nomes de lugares, fusos horários, formatação de datas e estratégia de localização. pt-BR está assumido, mas seu escopo geográfico e eventual suporte multilíngue não estão confirmados.
+8. **A busca aceita nomes em outros idiomas, acentos e entradas parciais? Como ordena resultados e trata consulta vazia, sem correspondência ou erro do serviço de geocodificação?** Impacto: sem regras, resultados podem ser inconsistentes e usuários podem não conseguir encontrar o local desejado.
+9. **Quais informações identificam suficientemente uma cidade (região/estado, país, coordenadas), e como o usuário confirma ou altera a seleção?** Impacto: cidades homônimas podem levar a uma previsão do local errado.
+10. **A geolocalização automática fará parte do produto? Se sim, quando será solicitada, como será explicada e qual alternativa haverá se a pessoa negar a permissão?** Impacto: afeta privacidade, permissões do navegador e o fluxo inicial; sem alternativa, a consulta pode ficar bloqueada.
+11. **Quais unidades além de temperatura devem ser oferecidas (vento, precipitação etc.)? A unidade escolhida persiste entre visitas ou cidades?** Impacto: sem decisão, valores podem aparecer em unidades inesperadas e a preferência pode se perder; persistência também determina se é necessário armazenamento local.
+12. **A consulta exige apenas a cidade escolhida nesta sessão ou deve lembrar cidades recentes/favoritas?** Impacto: define se há estado persistente, armazenamento, controles de privacidade e trabalho adicional de interface.
+13. **O app precisa funcionar sem conexão ou exibir dados armazenados em cache? Se sim, por quanto tempo e como indicará que estão desatualizados?** Impacto: determina estratégia de cache, comportamento offline e risco de apresentar dados antigos sem contexto.
+14. **Qual comportamento é esperado para lentidão, limite de requisições, indisponibilidade ou resposta inválida do provedor? Deve haver repetição automática, tentativa manual ou provedor alternativo?** Impacto: sem política, falhas podem causar esperas longas, requisições repetidas, custos/limites excedidos ou ausência de dados.
+15. **As metas de desempenho de 3 segundos e disponibilidade mensal de 99,5% estão aprovadas? Como e em que condições serão medidas?** Impacto: sem definição de rede, dispositivo, ponto de medição, janela e responsabilidades sobre hospedagem, as metas não são testáveis nem há como atribuir falhas.
+16. **Quais navegadores, versões e dispositivos precisam ser suportados?** Impacto: sem uma matriz de compatibilidade, não é possível priorizar testes ou definir quando uma falha de suporte é bloqueadora.
+17. **O nível WCAG 2.2 AA é requisito formal? Há tecnologias assistivas e cenários de uso que devem ser validados além dos critérios mínimos?** Impacto: sem escopo e validação, barreiras de acesso podem permanecer mesmo que os controles pareçam acessíveis em inspeção visual.
+18. **Há requisitos de segurança, privacidade, retenção de dados, analytics ou consentimento? Quais dados, se houver, serão coletados?** Impacto: mesmo sem autenticação ou servidor de persistência assumidos, geolocalização, logs e analytics podem envolver dados pessoais e exigir controles e comunicação apropriados.
+19. **Como o produto deve se sustentar e há restrições de custo, publicidade ou uso comercial dos dados do provedor?** Impacto: limites de uso, atribuição exigida ou custos podem inviabilizar a solução ou exigir mudanças de provedor e interface.
+20. **Quem é responsável por operação, monitoramento e resposta a incidentes, e qual tempo de recuperação é aceitável?** Impacto: uma meta de disponibilidade sem responsáveis, alertas e procedimento de recuperação não assegura que o serviço volte a funcionar após uma falha.
 
 ## Suposições
 
