@@ -20,10 +20,10 @@ A empresa precisa de uma aplicação para que usuários consultem o clima de cid
 
 ## Requisitos Não-Funcionais
 
-- **RNF-01 — Responsividade:** a interface deve se adaptar a celulares, tablets e desktops sem perda de conteúdo ou funcionalidade.
-- **RNF-02 — Acessibilidade:** controles devem ser operáveis por teclado, ter rótulos acessíveis e manter contraste e hierarquia de conteúdo legíveis.
-- **RNF-03 — Desempenho:** buscas e atualização das informações devem apresentar feedback imediato e evitar bloqueio da interface durante a espera.
-- **RNF-04 — Confiabilidade:** falhas de rede ou do provedor devem ser comunicadas sem encerrar ou inutilizar a aplicação.
+- **RNF-01 — Responsividade:** entre larguras de 320 px e 1920 px, a interface deve manter conteúdo e funcionalidades disponíveis, sem rolagem horizontal da página.
+- **RNF-02 — Acessibilidade:** os fluxos de busca e consulta devem atender ao WCAG 2.2 nível AA, incluindo operação por teclado, rótulos acessíveis e contraste adequado.
+- **RNF-03 — Desempenho:** em condições normais de rede, 95% das buscas devem apresentar resultados ou erro em até 3 segundos; a interface deve permanecer interativa durante a espera.
+- **RNF-04 — Disponibilidade e resiliência:** a aplicação deve estar acessível ao menos 99,5% do tempo em cada mês. Falhas de rede ou do provedor de clima devem ser comunicadas e permitir nova tentativa; a disponibilidade do provedor externo não compõe a meta da aplicação.
 - **RNF-05 — Idioma e localização:** interface, datas e unidades devem seguir as decisões de idioma e localização adotadas para o produto.
 
 ## Riscos
@@ -44,7 +44,7 @@ A empresa precisa de uma aplicação para que usuários consultem o clima de cid
 4. **Como o usuário deve escolher entre cidades com o mesmo nome?** Impacto: sem contexto regional, pode consultar o local errado.
 5. **É necessário oferecer suporte a outros idiomas além de pt-BR?** Impacto: afeta tradução, formatação de datas e estratégia de localização.
 6. **A aplicação deve funcionar offline ou manter dados em cache?** Impacto: afeta disponibilidade percebida, armazenamento e indicação de atualidade dos dados.
-7. **Há metas de latência, disponibilidade ou compatibilidade com navegadores específicos?** Impacto: sem metas, não é possível definir critérios verificáveis de desempenho e suporte.
+7. **Há requisitos de compatibilidade com navegadores específicos?** Impacto: define a matriz de navegadores e versões que deve ser validada.
 
 ## Suposições
 
