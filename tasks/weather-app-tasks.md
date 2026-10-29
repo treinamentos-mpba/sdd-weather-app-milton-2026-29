@@ -6,7 +6,20 @@
 
 O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas dois arquivos. Foram divididos contratos, regras temporais, normalização, transporte, preferências, coordenação, apresentação, composição, jornadas E2E e evidências operacionais. A tabela final registra a correspondência dos **IDs antigos**, substituídos pelos IDs abaixo; não são tarefas adicionais.
 
-**Todas as tarefas estão pendentes.** A ordem é topológica; dependências são explícitas. Tarefas independentes podem avançar em paralelo apenas se não houver disputa pelos mesmos arquivos.
+**Todas as tarefas estão pendentes.** A ordem de leitura é a ordem recomendada de implementação: **tipos → funções puras → services → hook → componentes → integração → testes → hardening**. Todas as dependências aparecem antes dos consumidores. Os IDs foram preservados para não quebrar referências; por isso, após a reordenação, a numeração não é necessariamente crescente no documento.
+
+| Etapa | Tarefas na ordem de execução |
+|---|---|
+| Tipos | T-01 a T-03 |
+| Funções puras | T-04 a T-12 |
+| Services e dados de teste necessários | T-13 a T-23 |
+| Hook e reducer | T-24 a T-38 |
+| Componentes e shell | T-39 a T-52 |
+| Integração em App | T-53 a T-58 |
+| Testes, infraestrutura de teste e evidências | T-59 a T-75; T-79 a T-81; T-83 a T-92 |
+| Hardening, CI e gates finais | T-76 a T-78; T-82; T-93 a T-99 |
+
+As etapas orientam a sequência, mas não criam barreiras artificiais: **Dependências** lista os pré-requisitos reais de cada tarefa. “Nenhuma” significa que ela pode começar sem outra tarefa concluída. Testes focados acompanham cada implementação; fixtures T-16/T-17 precedem seus services consumidores e ferramentas T-61 a T-64/T-79 precedem as suítes que as utilizam. Tarefas independentes podem avançar em paralelo apenas se não houver disputa pelos mesmos arquivos. Validações finais de hardening não adiam as proteções já exigidas nos tipos, funções, services e hook.
 
 ### Regra de tamanho e verificação
 
@@ -29,7 +42,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **Inspeção manual/documental:** registrar passos, resultado observado e evidência por item. Para WCAG, informar ID do critério, medição/observação e justificativa de não aplicabilidade quando houver; “parece acessível” não é resultado. Decisão operacional requer aprovação identificada do responsável, não somente um campo preenchido.
 - **Rastreabilidade:** o campo de cada tarefa aponta os requisitos aplicáveis; escolhas técnicas adicionais são verificadas contra a seção correspondente do plano, sem criar requisito de produto novo. A matriz final indica o responsável integrado por CA/EC/RNF; T-98 registra as evidências concretas.
 
-## Entrega 1 — Contratos e regras puras
+## Entrega 1 — Tipos
 
 ### T-01 — Definir contratos meteorológicos
 
@@ -60,6 +73,8 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **Dependências:** T-01, T-02.
 - **Arquivos prováveis:** `src/types/state.ts`.
 - **Rastreabilidade:** RF-05, RF-08; EC-25, EC-26, EC-32.
+
+## Entrega 2 — Funções puras
 
 ### T-04 — Converter e formatar temperaturas
 
@@ -151,7 +166,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **Arquivos prováveis:** `src/lib/normalizeWeather.ts`, `tests/unit/normalizeWeather.test.ts`.
 - **Rastreabilidade:** EC-13, EC-36, EC-43; RF-02, RF-03, RF-05.
 
-## Entrega 2 — Dados externos e APIs do navegador
+## Entrega 3 — Services e APIs do navegador
 
 ### T-13 — Implementar transporte e classificação HTTP
 
@@ -263,7 +278,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **Arquivos prováveis:** `src/services/geolocation.ts`, `tests/unit/geolocation.test.ts`.
 - **Rastreabilidade:** CA-06.1 a CA-06.3; EC-07, EC-18, EC-19.
 
-## Entrega 3 — Transições e orquestração
+## Entrega 4 — Hook e reducer
 
 ### T-24 — Implementar transições de busca
 
@@ -301,7 +316,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **Tipo:** Data
 - **Descrição:** Iniciar hook com ação explícita de busca e retry pelo termo enviado.
 - **Critérios de aceite:** Vitest envia “ São Paulo ” como “São Paulo”; editar texto ou enviar só espaços faz zero chamadas. Lista válida gera success, vazio documentado gera empty e falha gera error, encerrando loading. Após enviar A e editar B sem envio, retry chama A. Rejeição inesperada gera `unexpected` e diagnóstico somente de categoria/serviço, sem input/objeto bruto.
-- **Dependências:** T-18, T-24.
+- **Dependências:** T-18, T-26.
 - **Arquivos prováveis:** `src/hooks/useWeatherApp.ts`, `tests/unit/useWeatherApp.search.test.ts`.
 - **Rastreabilidade:** EC-01, EC-02, EC-04, EC-06; CA-05.3; RNF-06.
 
@@ -415,7 +430,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **Arquivos prováveis:** `src/hooks/useWeatherApp.ts`, `tests/unit/useWeatherApp.preferences.test.ts`.
 - **Rastreabilidade:** EC-24, EC-37, EC-38.
 
-## Entrega 4 — Componentes isolados
+## Entrega 5 — Componentes e shell
 
 ### T-39 — Definir estilos globais e foco
 
@@ -557,7 +572,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 - **Arquivos prováveis:** `src/components/PreferencesPanel.tsx`, `tests/components/PreferencesPanel.test.tsx`.
 - **Rastreabilidade:** CA-07.1; EC-22 a EC-24, EC-37, EC-38, EC-42.
 
-## Entrega 5 — Composição incremental de App
+## Entrega 6 — Integração em App
 
 Cada tarefa desta entrega altera somente a ligação de props/callbacks indicada. Os serviços e componentes já foram implementados e testados nas dependências; não reimplementar regras em App.
 
@@ -621,7 +636,7 @@ Cada tarefa desta entrega altera somente a ligação de props/callbacks indicada
 - **Arquivos prováveis:** `src/App.tsx`, `tests/components/App.test.tsx`.
 - **Rastreabilidade:** CA-07.1; EC-24, EC-37, EC-42.
 
-## Entrega 6 — Integração automatizada
+## Entrega 7 — Testes automatizados
 
 Tarefas E2E consomem componentes e dados prontos; não incluem correções de implementação. Executar os fluxos principais de busca, unidade, recuperação e preferências também nos projetos móveis. Outras combinações extensas permanecem no nível unitário responsável.
 
@@ -795,36 +810,6 @@ Tarefas E2E consomem componentes e dados prontos; não incluem correções de im
 - **Arquivos prováveis:** `tests/e2e/time.spec.ts`.
 - **Rastreabilidade:** CA-08.3; EC-27, EC-28, EC-31.
 
-### T-76 — Testar conteúdo não confiável no navegador
-
-- **ID:** T-76
-- **Tipo:** Test
-- **Descrição:** Verificar texto externo e encoding com sentinelas sintéticas.
-- **Critérios de aceite:** Input, resposta API e preferência com marcação não executam sentinela; texto permanece texto. `&`/`?` não alteram host/parâmetros fixos. Não modificar implementação nesta tarefa.
-- **Dependências:** T-58, T-64.
-- **Arquivos prováveis:** `tests/e2e/untrustedContent.spec.ts`.
-- **Rastreabilidade:** EC-03; RNF-06.
-
-### T-77 — Testar rejeição de redirecionamento no browser
-
-- **ID:** T-77
-- **Tipo:** Test
-- **Descrição:** Complementar mock de fetch com comportamento real do navegador.
-- **Critérios de aceite:** Rota controlada responde 302 para destino local sintético; UI mostra falha recuperável e contador do destino permanece zero. Nenhuma coordenada é enviada a terceiros; não afirmar que browser distingue CORS/rede/redirect.
-- **Dependências:** T-54, T-64.
-- **Arquivos prováveis:** `tests/e2e/redirect.spec.ts`.
-- **Rastreabilidade:** RF-05; RNF-06.
-
-### T-78 — Inspecionar minimização de dados no browser
-
-- **ID:** T-78
-- **Tipo:** Test
-- **Descrição:** Auditar saídas observáveis durante consulta/localização/preferências.
-- **Critérios de aceite:** Coordenadas sintéticas aparecem somente na requisição autorizada ao provedor, não na navegação, storage, mensagens ou diagnósticos. Preferências não contêm ID/fuso/cache; não há persistência em servidor/analytics.
-- **Dependências:** T-57, T-58, T-64.
-- **Arquivos prováveis:** `tests/e2e/privacy.spec.ts`.
-- **Rastreabilidade:** CA-07.2, CA-07.3; EC-19; RNF-06.
-
 ### T-79 — Instalar scanner de acessibilidade de desenvolvimento
 
 - **ID:** T-79
@@ -841,7 +826,7 @@ Tarefas E2E consomem componentes e dados prontos; não incluem correções de im
 - **Tipo:** Test
 - **Descrição:** Verificar semântica, teclado e scanner nos estados principais.
 - **Critérios de aceite:** Playwright executa scanner separadamente em idle/loading/vazio/sucesso/parcial/erro com regras WCAG 2.2 A/AA e anteriores aplicáveis; array de violações é vazio em todos. Assertions verificam nomes acessíveis, foco permanecendo na busca e recuperação acionável por Tab/Enter, com callback/requisição esperada. Relatório lista estado e resultado; não declara conformidade integral nem anúncio percebido.
-- **Dependências:** T-55, T-57, T-58, T-64, T-79.
+- **Dependências:** T-55, T-56, T-57, T-58, T-64, T-79.
 - **Arquivos prováveis:** `tests/e2e/accessibility.spec.ts`.
 - **Rastreabilidade:** EC-29; RNF-02.
 
@@ -855,17 +840,7 @@ Tarefas E2E consomem componentes e dados prontos; não incluem correções de im
 - **Arquivos prováveis:** `tests/e2e/responsive.spec.ts`.
 - **Rastreabilidade:** RNF-01, RNF-02.
 
-### T-82 — Alinhar execução integral da CI
-
-- **ID:** T-82
-- **Tipo:** Infra
-- **Descrição:** Executar os gates existentes e projetos declarados num workflow.
-- **Critérios de aceite:** Execução identificada da CI instala Chromium/Firefox/WebKit e dependências do sistema; cada comando `pnpm lint`, `pnpm check`, `pnpm build`, `pnpm test`, `pnpm test:e2e` encerra com código 0 e build precede E2E. Relatório contém os cinco projetos de T-62 e cenários previstos, sem skip tratado como cobertura; falha inicial/flaky permanece registrada, não vira aprovação por retry. Workflow declara retenção dos artefatos e somente dados sintéticos são capturados.
-- **Dependências:** T-59, T-60, T-65, T-66, T-67, T-68, T-69, T-70, T-71, T-72, T-73, T-74, T-75, T-76, T-77, T-78, T-80, T-81.
-- **Arquivos prováveis:** `.github/workflows/ci.yml`.
-- **Rastreabilidade:** RNF-04, RNF-06, RNF-07; gate de merge do plano.
-
-## Entrega 7 — Evidências de aceite
+## Entrega 8 — Testes e evidências de aceite
 
 Não presumir aprovação pela existência dos scripts. Esta entrega registra execuções reais separadas da CI determinística.
 
@@ -969,7 +944,47 @@ Não presumir aprovação pela existência dos scripts. Esta entrega registra ex
 - **Arquivos prováveis:** `tests/acceptance/compatibility.md`.
 - **Rastreabilidade:** RNF-01, RNF-07.
 
-## Entrega 8 — Pré-publicação e fechamento
+## Entrega 9 — Hardening, CI e fechamento
+
+### T-76 — Testar conteúdo não confiável no navegador
+
+- **ID:** T-76
+- **Tipo:** Test
+- **Descrição:** Verificar texto externo e encoding com sentinelas sintéticas.
+- **Critérios de aceite:** Input, resposta API e preferência com marcação não executam sentinela; texto permanece texto. `&`/`?` não alteram host/parâmetros fixos. Não modificar implementação nesta tarefa.
+- **Dependências:** T-58, T-64.
+- **Arquivos prováveis:** `tests/e2e/untrustedContent.spec.ts`.
+- **Rastreabilidade:** EC-03; RNF-06.
+
+### T-77 — Testar rejeição de redirecionamento no browser
+
+- **ID:** T-77
+- **Tipo:** Test
+- **Descrição:** Complementar mock de fetch com comportamento real do navegador.
+- **Critérios de aceite:** Rota controlada responde 302 para destino local sintético; UI mostra falha recuperável e contador do destino permanece zero. Nenhuma coordenada é enviada a terceiros; não afirmar que browser distingue CORS/rede/redirect.
+- **Dependências:** T-54, T-64.
+- **Arquivos prováveis:** `tests/e2e/redirect.spec.ts`.
+- **Rastreabilidade:** RF-05; RNF-06.
+
+### T-78 — Inspecionar minimização de dados no browser
+
+- **ID:** T-78
+- **Tipo:** Test
+- **Descrição:** Auditar saídas observáveis durante consulta/localização/preferências.
+- **Critérios de aceite:** Coordenadas sintéticas aparecem somente na requisição autorizada ao provedor, não na navegação, storage, mensagens ou diagnósticos. Preferências não contêm ID/fuso/cache; não há persistência em servidor/analytics.
+- **Dependências:** T-57, T-58, T-64.
+- **Arquivos prováveis:** `tests/e2e/privacy.spec.ts`.
+- **Rastreabilidade:** CA-07.2, CA-07.3; EC-19; RNF-06.
+
+### T-82 — Alinhar execução integral da CI
+
+- **ID:** T-82
+- **Tipo:** Infra
+- **Descrição:** Executar os gates existentes e projetos declarados num workflow.
+- **Critérios de aceite:** Execução identificada da CI instala Chromium/Firefox/WebKit e dependências do sistema; cada comando `pnpm lint`, `pnpm check`, `pnpm build`, `pnpm test`, `pnpm test:e2e` encerra com código 0 e build precede E2E. Relatório contém os cinco projetos de T-62 e cenários previstos, sem skip tratado como cobertura; falha inicial/flaky permanece registrada, não vira aprovação por retry. Workflow declara retenção dos artefatos e somente dados sintéticos são capturados.
+- **Dependências:** T-59, T-60, T-65, T-66, T-67, T-68, T-69, T-70, T-71, T-72, T-73, T-74, T-75, T-76, T-77, T-78, T-80, T-81.
+- **Arquivos prováveis:** `.github/workflows/ci.yml`.
+- **Rastreabilidade:** RNF-04, RNF-06, RNF-07; gate de merge do plano.
 
 As decisões operacionais não bloqueiam desenvolver o MVP. Não escolher hospedagem, implementar backend, anunciar SLA ou executar deploy implicitamente. Arquivo de configuração da hospedagem em T-97 só é identificado após T-95.
 
