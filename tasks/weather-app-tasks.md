@@ -909,6 +909,8 @@ As tarefas T-100 a T-103 são dedicadas exclusivamente a testes, sem mudanças e
 
 ### T-80 — Automatizar acessibilidade dos estados
 
+Escopo incremental do protótipo (T-80/T-81/T-87): `tests/e2e/accessibility.spec.ts` cobre os cinco estados demonstrativos em 320/390/768/1366/1920 px, scanner em mobile/desktop, recuperação com foco no conteúdo, skip link, unidades por teclado/toque e reflow a 200%. Correções prioritárias em App/SearchBar/UnitToggle preservam foco, reforçam contraste de bordas e ampliam alvos para 44 px. Isso não aprova a integração real, estado parcial ou testes manuais T-88/T-89.
+
 - **ID:** T-80
 - **Tipo:** Test
 - **Descrição:** Verificar semântica, teclado e scanner nos estados principais.

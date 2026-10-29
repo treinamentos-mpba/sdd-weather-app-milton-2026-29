@@ -143,6 +143,8 @@ Um componente por arquivo. Relógio e chamadas são fornecidos nos pontos de efe
 
 Protótipo visual incremental: `App` compõe SearchBar, UnitToggle, atuais, previsão e os três estados de feedback com `mockWeatherData`. Inicia em success; seletor de demonstração oferece idle/loading/empty/error/success sem timers ou efeitos. Busca local compara Salvador sem distinguir caixa; outros termos exibem orientação de vazio. Retry manual volta ao mock. A interface sinaliza dados fixos ilustrativos, não clima real; `unit` permanece estado de UI e é propagada aos componentes para conversão na renderização. Não substituir nem declarar concluídos services, hook ou integração real por esse protótipo.
 
+Hardening do protótipo: após retry explícito que remove seu botão, focar o `main` estável; respostas de busca não deslocam foco. Controles de unidade têm alvo mínimo de 44 × 44 CSS px e bordas dos campos devem contrastar ao menos 3:1 com o fundo adjacente. `tests/e2e/accessibility.spec.ts` verifica os cinco estados em 320/390/768/1366/1920 px, scanner WCAG A/AA, navegação por teclado, toque e reflow com texto a 200%. Anúncios percebidos por leitor de tela continuam exigindo validação manual.
+
 Contratos TypeScript propostos; declarações não representam código de produção. Campos numéricos de domínio são finitos e validados, mantidos na precisão de origem. `null` significa indisponível, nunca zero.
 
 ```ts

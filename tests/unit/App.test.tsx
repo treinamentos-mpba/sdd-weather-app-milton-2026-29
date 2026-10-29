@@ -53,6 +53,7 @@ describe('App', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('Falha simulada');
     await user.click(screen.getByRole('button', { name: 'Tentar novamente' }));
+    expect(screen.getByRole('main')).toHaveFocus();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.getAllByRole('article')).toHaveLength(5);
     expect(within(screen.getByRole('main')).getAllByText(/°F/)).toHaveLength(12);

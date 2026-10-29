@@ -32,7 +32,7 @@ export default function ForecastCard({ day, unit }: ForecastCardProps) {
         <time dateTime={day.date}>{formatDayLabel(day.date)}</time>
       </h3>
       {condition.icon && (
-        <span aria-hidden="true" className="mt-4 block text-4xl text-sun">
+        <span aria-hidden="true" className="mt-4 block text-[32px] text-sun sm:text-4xl">
           {condition.icon}
         </span>
       )}

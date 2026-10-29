@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import CurrentWeather from './components/CurrentWeather';
 import ForecastList from './components/ForecastList';
 import SearchBar from './components/SearchBar';
@@ -29,6 +29,12 @@ export default function App() {
   const [unit, setUnit] = useState<Unit>('celsius');
   const [status, setStatus] = useState<DemoState>('success');
   const stateId = useId();
+  const contentRef = useRef<HTMLElement>(null);
+
+  function handleRetry() {
+    setStatus('success');
+    contentRef.current?.focus();
+  }
 
   function handleSearch(query: string) {
     setStatus(
@@ -39,7 +45,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-dvh bg-gradient-to-br from-night-900 via-night-800 to-night-900">
+    <div className="min-h-dvh break-words bg-gradient-to-br from-night-900 via-night-800 to-night-900">
       <a
         href="#weather-content"
         className="sr-only rounded-xl bg-accent-400 p-3 text-night-900 focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-10"
@@ -49,11 +55,11 @@ export default function App() {
       <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
         <header className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3">
               <span aria-hidden="true" className="rounded-2xl bg-sun/10 p-3 text-3xl">
                 ☀
               </span>
-              <div>
+              <div className="min-w-0 max-w-full break-words">
                 <p className="text-xl font-semibold tracking-tight">WeatherView</p>
                 <p className="text-sm text-white/70">Seu dia, com mais clareza.</p>
               </div>
@@ -62,7 +68,7 @@ export default function App() {
               Demonstração · dados fictícios
             </span>
           </div>
-          <div className="grid items-center gap-4 md:grid-cols-[1fr_auto]">
+          <div className="grid grid-cols-1 items-center gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
             <SearchBar onSearch={handleSearch} disabled={status === 'loading'} />
             <UnitToggle unit={unit} onChange={setUnit} />
           </div>
@@ -71,7 +77,7 @@ export default function App() {
               Explore o exemplo de Salvador. Busca local, sem API; estes dados fixos não são uma
               previsão real.
             </p>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
               <label htmlFor={stateId}>Estado da demonstração</label>
               <select
                 id={stateId}
@@ -80,7 +86,7 @@ export default function App() {
                   const state = demoStates.find((item) => item.value === event.target.value);
                   if (state) setStatus(state.value);
                 }}
-                className="min-h-11 max-w-full rounded-xl border border-white/20 bg-night-900 px-3 py-2 text-white"
+                className="min-h-11 max-w-full rounded-xl border border-white/50 bg-night-900 px-3 py-2 text-white"
               >
                 {demoStates.map((state) => (
                   <option key={state.value} value={state.value}>
@@ -91,7 +97,7 @@ export default function App() {
             </div>
           </div>
         </header>
-        <main id="weather-content" tabIndex={-1} className="mt-10 space-y-6">
+        <main ref={contentRef} id="weather-content" tabIndex={-1} className="mt-10 space-y-6">
           <div>
             <p className="mb-2 text-sm font-medium uppercase tracking-widest text-accent-400">
               Tempo de planejar
@@ -117,7 +123,7 @@ export default function App() {
           {status === 'error' && (
             <ErrorState
               message="Falha simulada ao consultar o clima. Tente novamente para voltar ao exemplo."
-              onRetry={() => setStatus('success')}
+              onRetry={handleRetry}
             />
           )}
           {status === 'success' && (

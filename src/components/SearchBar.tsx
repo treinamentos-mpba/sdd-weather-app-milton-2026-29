@@ -30,7 +30,7 @@ export default function SearchBar({ onSearch, disabled = false }: SearchBarProps
       role="search"
       aria-label="Buscar cidade"
       onSubmit={handleSubmit}
-      className="rounded-2xl border border-white/10 bg-white/5 p-4 font-sans text-white shadow-glass backdrop-blur-md"
+      className="min-w-0 rounded-2xl border border-white/10 bg-white/5 p-4 font-sans text-white shadow-glass backdrop-blur-md"
     >
       <label htmlFor={inputId} className="mb-2 block text-sm font-medium">
         Nome da cidade
@@ -47,7 +47,7 @@ export default function SearchBar({ onSearch, disabled = false }: SearchBarProps
           aria-invalid={showError}
           aria-describedby={showError ? errorId : undefined}
           placeholder="Ex.: Salvador"
-          className="min-w-0 flex-1 rounded-xl border border-white/20 bg-night-900 px-4 py-3 text-white placeholder:text-white/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-400"
+          className="min-w-0 w-full flex-1 rounded-xl border border-white/50 bg-night-900 px-4 py-3 text-white placeholder:text-white/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-400"
         />
         <button
           type="submit"
