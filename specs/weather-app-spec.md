@@ -69,6 +69,25 @@ Verificado em 29/10/2026 na documentação oficial e em uma consulta pública de
 | US-07 | Como pessoa que organiza a rotina diária, quero que o navegador lembre minha cidade e unidade de temperatura para reduzir a repetição de escolhas a cada visita. | RF-07 |
 | US-08 | Como pessoa que consulta o clima em mobilidade, quero atualizar manualmente os dados e ver o horário da consulta para saber quando as informações foram consultadas. | RF-08 |
 
+### Matriz de rastreabilidade
+
+Os intervalos são inclusivos. Os cenários EC também são critérios de aceite; referências compartilhadas indicam integração entre stories, não testes duplicados. Esta matriz referencia as regras existentes, sem criar requisitos novos.
+
+**RNFs transversais a todas as stories:** RNF-01 (responsividade), RNF-02 (acessibilidade), RNF-05 (idioma e localização), RNF-06 (segurança e privacidade) e RNF-07 (compatibilidade). A última coluna destaca os RNFs adicionais e o foco específico de validação.
+
+| User Story | Requisito funcional | Acceptance Criteria | Cenários complementares | RNFs relevantes além dos transversais |
+|---|---|---|---|---|
+| US-01 — Buscar cidade | RF-01 | CA-01.1 a CA-01.3 | EC-01 a EC-05, EC-15, EC-16, EC-32, EC-35, EC-42 | RNF-03: latência da busca; RNF-04: recuperação de falhas de geocoding por US-05. |
+| US-02 — Consultar clima atual | RF-02 | CA-02.1 a CA-02.3 | EC-10, EC-11, EC-13, EC-14, EC-36, EC-41 | RNF-03: latência da consulta meteorológica; RNF-04: dados parciais e falhas por US-05. |
+| US-03 — Consultar previsão | RF-03 | CA-03.1 a CA-03.3; CA-02.3 (aviso compartilhado) | EC-10 a EC-14, EC-20, EC-31, EC-36, EC-40, EC-41, EC-43 | RNF-03: latência da consulta meteorológica; RNF-04: lacunas e séries inválidas. Foco transversal em RNF-05: datas e fuso. |
+| US-04 — Alternar unidade | RF-04 | CA-04.1 a CA-04.4 | EC-21, EC-30, EC-34, EC-44 | Nenhum adicional. Foco transversal em RNF-05: unidades e arredondamento; troca local não integra a amostra de rede de RNF-03. |
+| US-05 — Tratar estados e falhas | RF-05 | CA-05.1 a CA-05.4 | EC-04, EC-06 a EC-09, EC-13, EC-25, EC-26, EC-29, EC-33, EC-36, EC-39 | RNF-03: registrar latência de falhas separadamente; RNF-04: recuperação, timeout e limites. Foco transversal em RNF-02: anúncios e teclado. |
+| US-06 — Usar localização | RF-06 | CA-06.1 a CA-06.3 | EC-07, EC-17 a EC-19 | RNF-03: consulta meteorológica após obter localização, sem incluir espera por permissão; RNF-04: recusa, indisponibilidade e timeout. Foco transversal em RNF-06: ação explícita e informação prévia. |
+| US-07 — Lembrar preferências | RF-07 | CA-07.1 a CA-07.3 | EC-19, EC-22 a EC-24, EC-30, EC-37, EC-38, EC-42 | RNF-04: continuar na sessão quando armazenamento falhar. Foco transversal em RNF-06: minimização e exclusão. Busca e previsão após restauração seguem US-01/US-02/US-03. |
+| US-08 — Atualizar consulta | RF-08 | CA-08.1 a CA-08.3 | EC-15 a EC-17, EC-25 a EC-28, EC-31 a EC-33 | RNF-03: latência da atualização; RNF-04: respostas tardias e falha de atualização. Foco transversal em RNF-05: horários e atualidade. |
+
+Para decompor tarefas e testes, usar os IDs CA/EC como evidência de comportamento e os protocolos dos RNFs como evidência de qualidade. Falhas comuns de busca e previsão são verificadas em US-05 e integradas aos fluxos consumidores.
+
 ## Acceptance Criteria
 
 Os critérios abaixo seguem Given/When/Then (precondição/ação/resultado), por story e requisito funcional. Usar respostas controladas do provedor, relógio e permissões simulados para tornar os cenários reproduzíveis. O registro em Open Questions documenta o fechamento das decisões e separa os bloqueios de publicação.
