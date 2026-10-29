@@ -98,26 +98,26 @@ Um componente por arquivo; serviços não importam React. Tipos comuns ficam em 
 Contratos TypeScript propostos; declarações não representam código de produção. Campos numéricos de domínio são finitos e validados, mantidos na precisão de origem. `null` significa indisponível, nunca zero.
 
 ```ts
-type TemperatureUnit = 'C' | 'F';
-type LocalDate = string;
-type EpochMs = number;
-type IanaTimeZone = string;
+type Unit = 'celsius' | 'fahrenheit'; // Preferência de apresentação.
+type LocalDate = string; // Data local válida no formato YYYY-MM-DD.
+type EpochMs = number; // Instante em milissegundos desde Unix epoch.
+type IanaTimeZone = string; // Nome de fuso validado, como America/Bahia.
 
 interface Coordinates {
-  latitude: number;
-  longitude: number;
+  latitude: number; // Latitude WGS84 em graus.
+  longitude: number; // Longitude WGS84 em graus.
 }
 
 interface CityIdentity {
-  name: string;
-  region: string | null;
-  country: string | null;
+  name: string; // Nome retornado pelo geocoding.
+  region: string | null; // Região/estado, proveniente de admin1.
+  country: string | null; // País, quando disponível.
 }
 
 interface City extends CityIdentity {
-  id: number;
-  coordinates: Coordinates;
-  timeZone: IanaTimeZone | null;
+  id: number; // Identificador da localidade no geocoding.
+  coordinates: Coordinates; // Coordenadas para consultar a previsão.
+  timeZone: IanaTimeZone | null; // timezone do geocoding, se válido.
 }
 
 type WeatherLocation =
@@ -130,47 +130,49 @@ type WeatherCode =
   | 80 | 81 | 82 | 85 | 86 | 95 | 96 | 99;
 
 interface CurrentWeather {
-  temperatureC: number | null;
-  apparentTemperatureC: number | null;
-  weatherCode: WeatherCode | null;
-  relativeHumidityPct: number | null;
-  windSpeedKmh: number | null;
-  referenceTimeMs: EpochMs | null;
+  temperatureC: number | null; // current.temperature_2m, em Celsius.
+  apparentTemperatureC: number | null; // current.apparent_temperature, em Celsius.
+  weatherCode: WeatherCode | null; // current.weather_code reconhecido (WMO).
+  relativeHumidityPct: number | null; // current.relative_humidity_2m, em %.
+  windSpeedKmh: number | null; // current.wind_speed_10m, em km/h.
+  referenceTimeMs: EpochMs | null; // current.time normalizado; não é medição de estação.
 }
 
 interface ForecastDay {
-  date: LocalDate;
-  weatherCode: WeatherCode | null;
-  minTemperatureC: number | null;
-  maxTemperatureC: number | null;
-  maxPrecipitationProbabilityPct: number | null;
-  meanRelativeHumidityPct: number | null;
-  maxWindSpeedKmh: number | null;
+  date: LocalDate; // daily.time: dia no calendário da localização.
+  weatherCode: WeatherCode | null; // daily.weather_code: condição mais severa.
+  minTemperatureC: number | null; // daily.temperature_2m_min, em Celsius.
+  maxTemperatureC: number | null; // daily.temperature_2m_max, em Celsius.
+  maxPrecipitationProbabilityPct: number | null; // daily.precipitation_probability_max, em %.
+  meanRelativeHumidityPct: number | null; // daily.relative_humidity_2m_mean, em %.
+  maxWindSpeedKmh: number | null; // daily.wind_speed_10m_max, em km/h; não é rajada.
 }
 
-interface WeatherSnapshot {
-  location: WeatherLocation;
-  timeZone: IanaTimeZone | null;
-  periodStart: LocalDate | null;
-  current: CurrentWeather | null;
-  forecast: readonly ForecastDay[];
-  completedAtMs: EpochMs;
-  partial: boolean;
+interface WeatherData {
+  location: WeatherLocation; // Alvo solicitado; não a coordenada da grade do modelo.
+  timeZone: IanaTimeZone | null; // timezone validado da resposta de previsão.
+  periodStart: LocalDate | null; // Primeiro dia do período recebido.
+  current: CurrentWeather | null; // Condições atuais; null se seção indisponível.
+  forecast: readonly ForecastDay[]; // Cinco dias ou [] sem período local válido.
+  completedAtMs: EpochMs; // Conclusão da consulta utilizável, não horário do modelo.
+  partial: boolean; // Indica campos ou seções indisponíveis.
 }
 
 interface Preferences {
-  city?: CityIdentity;
-  unit?: TemperatureUnit;
+  city?: CityIdentity; // Última cidade manual lembrada, sem ID ou coordenadas.
+  unit?: Unit; // Unidade escolhida; ausente significa Celsius padrão.
 }
 ```
 
 `LocalDate` é validada como data real `YYYY-MM-DD`; `EpochMs` é um instante finito; `IanaTimeZone` deve ser aceito por `Intl`. Os aliases não substituem validação em runtime. Coordenadas devem estar em latitude −90 a 90 e longitude −180 a 180.
 
+`Unit` representa a preferência da UI, não a unidade dos campos de origem: os campos com sufixo `C` permanecem em Celsius. Na fronteira de armazenamento, mapear `celsius`/`fahrenheit` para `C`/`F` e vice-versa, preservando o contrato de persistência da spec.
+
 Invariantes (RF-02/RF-03/RF-07/RF-08):
 
-- `City.id` e coordenadas existem apenas em memória. Persistir somente projeção explícita para `CityIdentity`, nunca serializar `City` ou `WeatherSnapshot`.
+- `City.id` e coordenadas existem apenas em memória. Persistir somente projeção explícita para `CityIdentity`, nunca serializar `City` ou `WeatherData`.
 - Fuso válido e início de período conhecido produzem exatamente cinco `ForecastDay`, incluindo dias sem dados; fuso/período não determinável produz `forecast: []` e aviso de seção indisponível. Condições atuais válidas ainda podem ser exibidas.
-- `current: null` significa seção sem campo meteorológico utilizável. Na previsão, placeholders não contam como campos utilizáveis. Sem campo utilizável em ambas as seções, retornar erro, não `WeatherSnapshot`.
+- `current: null` significa seção sem campo meteorológico utilizável. Na previsão, placeholders não contam como campos utilizáveis. Sem campo utilizável em ambas as seções, retornar erro, não `WeatherData`.
 - Temperaturas são Celsius de origem. Conversões e arredondamento ocorrem somente para apresentação. Código desconhecido vira condição indisponível e resposta parcial.
 - Conferir unidades recebidas; valores em unidades ausentes ou incompatíveis não são presumidos como Celsius/km/h. Invalidar os campos afetados e sinalizar parcial.
 - Arrays diários com tamanho diferente de `daily.time` invalidam somente a série afetada. Invalidar todas as posições de uma data duplicada; ignorar datas inválidas ou fora do período; não deslocar valores.
@@ -218,7 +220,7 @@ interface WeatherServices {
   ): Promise<Result<CitySearchResult>>;
   fetchWeather(
     location: WeatherLocation, context: RequestContext
-  ): Promise<Result<WeatherSnapshot>>;
+  ): Promise<Result<WeatherData>>;
   locate(context: RequestContext): Promise<Result<Coordinates>>;
   readPreferences(): Result<PreferenceRead>;
   writePreferences(value: Preferences): Result<void>;
@@ -305,7 +307,7 @@ type SearchState =
 interface WeatherState {
   status: 'idle' | 'locating' | 'loading' | 'ready' | 'error';
   target: WeatherLocation | null;
-  snapshot: WeatherSnapshot | null;
+  snapshot: WeatherData | null;
   error: AppError | null;
   refreshFailed: boolean;
 }
@@ -313,7 +315,7 @@ interface WeatherState {
 interface AppState {
   search: SearchState;
   weather: WeatherState;
-  unit: TemperatureUnit;
+  unit: Unit;
   preferences: Preferences;
   preferenceFeedback: string | null;
   geocodingBlockedUntilMs: EpochMs | null;
