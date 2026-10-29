@@ -560,12 +560,71 @@ Falhas inesperadas de renderização devem apresentar tela recuperável sem stac
 
 A matriz da spec é o índice de cobertura: identificar testes por CA/EC. Um cenário compartilhado é testado uma vez no nível mais apropriado e integrado aos fluxos consumidores, sem exigir duplicação por story.
 
+Na etapa Tasks, cada CA/EC deve ter um teste ou procedimento manual responsável, com resultado esperado e evidência. Referências em mais de um nível indicam integração complementar, não obrigação de repetir todas as combinações.
+
+### Vitest — regras, serviços, estado e componentes
+
+| Alvo | Casos obrigatórios | Resultado verificável |
+|---|---|---|
+| Conversão pura em `lib/units.ts` | 0 °C → 32 °F, 100 °C → 212 °F, −40 °C → −40 °F; `null`, zero, empates positivos/negativos e alternâncias repetidas. | Valores derivados do Celsius de origem; arredondamento da spec, sem zero negativo ou perda acumulada. |
+| Demais funções de `lib/` | Cinco datas locais, DST/virada de ano, código WMO conhecido/desconhecido, unidade externa inválida, `null` versus zero e arrays desalinhados. | Dados normalizados e avisos esperados, sem dependência do fuso do processo ou criação de valores ausentes. |
+| Serviços com mock de `fetch` | Verificar URL/parâmetros/método; respostas completas, vazias, parciais, JSON inválido, HTTP 400/500/429 e rejeição de rede. | `Result` e classificação de erro corretos; encoding preservado, nenhuma falha transformada em lista vazia e nenhum dado pessoal em diagnóstico. |
+| Transporte e timeout | Promessa pendente, relógio controlado em 9.999 ms e 10.000 ms, resposta tardia; `Retry-After` em segundos/data, passado, inválido ou inacessível. | Operação pendente antes do prazo, timeout no prazo, sem retry automático; bloqueio e liberação manuais do serviço correto. |
+| APIs do navegador | Localização negada/indisponível/tardia; armazenamento com leitura/escrita/remoção falha ou valor corrompido. | Permissão apenas após ação; escolhas válidas preservadas na sessão; avisos e persistência mínima, sem coordenadas. |
+| Reducer e hook | Busca independente do forecast, supersessão, duplicatas, retry após timeout, apagar preferências durante request e mudança de unidade durante carregamento. | Só a intenção vigente altera o fluxo; `finally` antigo não limpa loading novo; resposta chega na unidade vigente e não recria preferências apagadas. |
+
+Componentes usam Testing Library e `user-event` por roles, labels e texto acessível, sem inspecionar estado privado do hook:
+
+| Estado | Verificação de apresentação e interação |
+|---|---|
+| `idle` | Campo e ações disponíveis; sem dados inventados nem consulta automática; Celsius padrão ou preferência válida restaurada. |
+| `loading` | Indicador/status acessível; campo editável; nenhuma duplicata da mesma operação pendente; manter somente snapshot permitido em refresh. |
+| `error` | Mensagem pt-BR da categoria, ação manual de recuperação e motivo de eventual bloqueio; sem stack trace, corpo bruto ou URL sensível. |
+| `empty` | Somente busca válida sem correspondências; orientar nova busca e não deixar resultados anteriores selecionáveis. |
+| `success` | Cidade correta, campos/unidades, cinco dias identificados, condição textual e atribuição/aviso de estimativas. |
+| `success` parcial | Manter valores válidos, mostrar “Sem dados” e aviso; não mesclar valores antigos ou marcar ausência como zero. |
+
+Mockar `fetch` na fronteira do serviço, não substituir o normalizador que está sendo testado. Em testes de apresentação isolada, fornecer props/callbacks; em integração do hook, substituir somente recursos externos. Restaurar mocks, timers, armazenamento e listeners após cada teste. Fixtures são sintéticas, sem localização pessoal; assertions verificam contratos e comportamento, não classes Tailwind ou snapshots extensos.
+
+Os testes isolados de componentes verificam conteúdo, foco e callbacks; contagem de chamadas, duplicatas e transições pertence aos testes de integração do hook ou E2E, não à inspeção de props estáticas.
+
+### Evidências de segurança e acessibilidade
+
+- **Vitest:** validar encoding dos parâmetros com termos contendo `&`, `?` e marcação; verificar que entrada não altera host ou parâmetros fixos. Dados maliciosos de entrada, API e armazenamento não podem virar HTML executável. Inspecionar preferências e diagnósticos capturados para comprovar ausência de coordenadas, termo pesquisado e corpos externos onde proibidos.
+- **Playwright:** usar sentinela sintética para detectar execução de marcação recebida; verificar que permanece texto. Conferir zero acessos à geolocalização antes da ação, zero chamadas meteorológicas ao alternar unidade e ausência de coordenadas em navegação, armazenamento e mensagens.
+- **Scanner:** adotar `@axe-core/playwright` como dependência apenas de desenvolvimento na tarefa de testes; executar regras WCAG 2.2 A/AA e dos níveis anteriores aplicáveis nos estados idle, loading, vazio, sucesso, parcial e erro. Exigir ausência de violações detectadas, sem declarar conformidade completa por esse resultado.
+- **Limite da automação:** Testing Library/Playwright verificam rótulos, regiões de status, conteúdo atualizado, foco e teclado. Confirmar os anúncios efetivamente percebidos com NVDA/Chrome e VoiceOver/Safari, registrando resultado por fluxo/critério; DOM correto isoladamente não comprova anúncio.
+- **Ambiente publicado:** verificar HTTPS, CSP, proibição de enquadramento, Referrer-Policy e Permissions-Policy no destino real de publicação, incluindo requisições necessárias ao provedor. Preview local sem headers equivalentes não é evidência desses controles.
+
+### Playwright — fluxos integrados e mobile
+
+Executar contra build de produção servido localmente. Interceptar somente os endpoints externos necessários; permitir recursos locais do build e bloquear chamadas não previstas. Registrar cada chamada inesperada e exigir lista vazia ao terminar o teste: abortar a chamada sozinho não significa aprovação. Geolocalização/permissões e armazenamento são controlados por contexto de teste.
+
+| Fluxo E2E | Verificações principais | Spec |
+|---|---|---|
+| Busca → seleção → clima/previsão | Cidade global, homônimos com contexto, escolha explícita e cinco dias corretos. | US-01/US-02/US-03. |
+| Conversão sem requisição | Alternar Celsius/Fahrenheit e conferir temperaturas/rótulos; contar chamadas de forecast antes/depois, sem novo request. | US-04, EC-44. |
+| Vazio → correção → sucesso | Termo inexistente, mensagem de vazio, nova busca e seleção sem resultados antigos. | US-01/US-05, EC-04. |
+| Erro/timeout → tentativa manual | Falha controlada seguida de recuperação; estado acessível e dados corretos; resposta atrasada não substitui tentativa nova. | US-05/US-08, EC-07/EC-33. |
+| Resposta parcial | Ausência de campo ou dia, aviso e placeholders, sem zeros inventados ou deslocamento de datas. | US-02/US-03/US-05. |
+| Localização opcional | Nenhum acesso inicial; informação prévia, ação explícita e sucesso; cenário separado de recusa mantendo busca manual. | US-06. |
+| Preferências entre visitas | Escolher cidade/unidade, recarregar, confirmar e selecionar novamente; apagar e reabrir sem restauração; inspecionar ausência de coordenadas/cache. | US-07. |
+| Atualização e concorrência | Refresh com sucesso/erro da mesma cidade; mudar cidade durante request; mudança de dia sem atualização automática. | US-08, EC-15/EC-25/EC-26/EC-31. |
+
+Rodar os fluxos principais em desktop e em viewport mobile de **390 × 844**, incluindo busca/seleção, conversão, erro/recuperação e preferências. Em **320, 390, 768, 1366 e 1920 CSS px**, verificar layout nos estados exigidos: largura do documento não supera a viewport, controles permanecem visíveis/acessíveis e nomes longos quebram linha. Testar interação de toque no perfil móvel, sem depender de hover. Emulação não substitui Safari/iOS ou Chrome/Android reais para aceite de compatibilidade.
+
+Usar locators semânticos, expectativas que aguardam condições e relógio controlado quando necessário; não introduzir sleeps para “estabilizar” testes. Criar contexto limpo por teste; testes não dependem da ordem de execução. Artefatos de falha contêm somente dados sintéticos e devem respeitar retenção da execução.
+
+**Smoke live separado:** executar no navegador, sem interceptar geocoding ou forecast, uma busca e seleção seguida de consulta meteorológica por perfil móvel/desktop exigido pela spec, usando cidade pública fixa, nunca localização pessoal. Verificar leitura real das respostas sob CORS, campos/unidades, fuso e apresentação utilizável; registrar data, versões e latência sem exigir valores meteorológicos fixos. Não integrar esse smoke à suíte determinística de cada PR nem ao p95 controlado. Em falha externa, registrar “integração não validada” e repetir após recuperação; não converter falha, skip ou retry em aprovação.
+
+### Distribuição de cobertura e aceite
+
 | Nível | Casos e técnica | Referências |
 |---|---|---|
 | Unitário — domínio | Guards de `unknown`, zero/null, domínios, séries curtas/duplicadas, cinco datas, WMO, arredondamento negativo/empates e conversão sem acumular erro. Fixtures com saída esperada. | RF-02/RF-03/RF-04; EC-10 a EC-14, EC-20/EC-21/EC-34/EC-36/EC-40/EC-43. |
 | Unitário — serviços | Fetch substituído, erros HTTP, resposta vazia documentada, deadlines, cabeçalho ausente/segundos/data, coordenadas e persistência mínima. | RF-01/RF-05/RF-06/RF-07; EC-03/EC-06 a EC-09/EC-19/EC-22/EC-37/EC-39. |
 | Unitário — coordenação | Reducer e hook com promessas controladas e fake timers: respostas fora de ordem, token expirado, cancelamento e não recriação de preferência apagada. | EC-15 a EC-17/EC-24/EC-25/EC-32/EC-33/EC-38. |
-| Componentes | Testing Library por roles/labels: lista, cinco cartões, campos ausentes, avisos, atribuição, controles e estados; interação por teclado. | Todos os CA; EC-01/EC-02/EC-04/EC-05/EC-23/EC-29/EC-30/EC-35/EC-41/EC-42. |
+| Componentes | Testing Library por roles/labels: lista, cinco cartões, campos ausentes, avisos, atribuição, controles e estados; interação por teclado. Somente apresentação e callbacks; efeitos nos níveis responsáveis acima. | Apresentação de CA-01.1/CA-01.2, CA-02.1 a CA-02.3, CA-03.1 a CA-03.3, CA-04.1 a CA-04.4 e CA-05.1 a CA-05.4; EC-01/EC-02/EC-04/EC-05/EC-29/EC-35/EC-41. |
 | E2E | Playwright com rotas controladas de geocoding/forecast, permissões e geolocation simuladas; reload e inspeção de armazenamento/tráfego. Sem depender do clima real no CI. | US-01 a US-08, EC-07/EC-18/EC-24/EC-26/EC-31/EC-44. |
 | Visual/assistivo manual | Layout nas cinco larguras da spec, zoom 200%, contraste, NVDA/Chrome e VoiceOver/Safari, foco e anúncios. Emulação WebKit não comprova Safari real. | RNF-01/RNF-02/RNF-07. |
 | Performance | Build de produção; 100 buscas e 100 forecasts por perfil com fixtures dez cidades/cinco dias e entrega após 500 ms. p95 pelo 95º valor ordenado ≤ 3 s por grupo. | RNF-03 e protocolo da spec. |
@@ -578,20 +637,32 @@ Testes de data usam instantes, fuso IANA e valores explícitos da spec; incluir 
 
 Comandos de entrega existentes: `pnpm lint`, `pnpm build`, `pnpm test` e `pnpm test:e2e`. `pnpm check` complementa formatação; usar os comandos selecionados conforme os arquivos alterados. Auditoria de dependências de produção com `pnpm audit --prod` e triagem documentada antes de publicar. Esta fase documental não executa build ou testes de implementação.
 
-Sem nova ferramenta de acessibilidade por padrão: começar pelas verificações manuais e ferramentas existentes; escolher scanner automatizado no trabalho de testes conforme exigência da spec, sem tratá-lo como certificação isolada.
+### Gates de entrega
+
+| Momento | Condição de aprovação |
+|---|---|
+| Merge de tarefas de código/testes | `pnpm lint`, `pnpm check`, `pnpm build`, `pnpm test` e `pnpm test:e2e` aprovados para a entrega, incluindo scanner nos cenários automatizados. Evidenciar CA/EC afetados, sem testes ignorados apresentados como cobertura concluída. A documentação isolada não exige esses comandos. |
+| Aceite do MVP | Cobertura prevista dos CA/EC demonstrada; p95 controlado, layouts, testes assistivos manuais e matriz real de navegadores com evidências. Smoke live por perfil concluído; falha externa deixa a integração pendente, não invalida artificialmente os testes determinísticos nem comprova aceite. |
+| Publicação para usuários reais | Aceite do MVP e checklist operacional da spec concluídos, incluindo termos/atribuição, responsáveis, logs, dependências e headers verificados no destino. Não publicar com falhas de segurança ou critérios obrigatórios pendentes. |
+
+Não estabelecer percentual de cobertura arbitrário, retries para esconder flakiness ou duplicação de toda a suíte em todas as combinações de viewport/navegador. Corrigir testes intermitentes; qualquer execução exploratória repetida mantém visível o resultado original.
 
 ## Risks & Trade-offs
 
-| Decisão/risco | Trade-off e mitigação | Spec |
-|---|---|---|
-| API direta, sem backend | Menos operação e nenhum segredo, mas CORS, quota e latência externos não são controlados. Tratar limites e indisponibilidade, sem SLA/failover. | RF-05, RNF-03/RNF-04/RNF-06. |
-| JSON validado manualmente | Evita dependência para poucos contratos, mas guards podem omitir casos. Testes com fixtures malformadas e normalizador único. | EC-10 a EC-14/EC-43. |
-| Intl sem biblioteca de datas | Menor bundle; referência local ambígua exige helper cuidadoso. Aceitar “Atualidade desconhecida”, nunca adivinhar um instante. | RF-03/RF-08, EC-20/EC-28. |
-| Nome/região sem ID persistido | Privacidade e aderência à spec, mas retorno exige geocoding e confirmação, podendo não resolver o mesmo local. Não restaurar automaticamente homônimo. | RF-07, EC-23/EC-42. |
-| Sem cache e sem retry automático | Mais simples e evita dados antigos/tentativas em cascata; exige conexão e ação manual. Preservar apenas snapshot visível da mesma sessão em falha. | RF-05/RF-08, EC-25/EC-26. |
-| Dados parciais | Mantém utilidade sem mascarar falha estrutural. Avisos e domínio validado; remoção permanente de campo exige revisão, não placeholder eterno. | RF-02/RF-03, EC-36. |
-| Políticas de privacidade externas | Cliente não controla logs do provedor/hospedagem. Informação explícita, HTTPS, sem logs próprios com localização, publicação condicionada ao checklist. | RNF-06. |
-| Testes controlados de desempenho | Reproduzíveis, não garantem velocidade real do provedor. Registrar smoke live e separar de aprovação controlada. | RNF-03. |
-| Estado local e reducer | Exige disciplina de tokens e invariantes, mas elimina store/cache global desnecessário. Testar concorrência e exclusão com efeitos pendentes. | RF-07/RF-08. |
+| Decisão/risco | Alternativa considerada | Trade-off e mitigação | Spec |
+|---|---|---|---|
+| API direta, sem backend | Proxy/BFF com quota e cache centralizados. | Menos operação e nenhum segredo, mas CORS, quota e latência externos não são controlados. Proxy adicionaria hospedagem e tratamento de localização no servidor, fora do MVP. Tratar falhas e limites sem SLA/failover. | RF-05, RNF-03/RNF-04/RNF-06. |
+| Fetch nativo | SDK do provedor ou cliente HTTP adicional. | Poucos endpoints dispensam dependência; helper HTTP único concentra deadline/status. SDK não elimina validação de domínio. | RF-01/RF-05. |
+| JSON validado manualmente | Biblioteca de schema em runtime. | Guards pequenos evitam dependência, mas podem omitir casos. Normalizador único e fixtures inválidas; reconsiderar biblioteca se os contratos crescerem, sem duplicar schema manual e externo. | EC-10 a EC-14/EC-43. |
+| Intl sem biblioteca de datas | Biblioteca com resolução explícita de fuso/DST. | Menor bundle, mas referência local ambígua exige helper testado; “Atualidade desconhecida” em vez de adivinhação. Reavaliar se a complexidade comprovada superar o benefício, sem alterar silenciosamente as regras. | RF-03/RF-08, EC-20/EC-28. |
+| Nome/região sem ID persistido | Salvar ID/coordenadas para restauração direta. | Mais cliques e nova busca, mas atende à minimização definida. Alternativa exige revisão da spec; nunca escolher homônimo automaticamente. | RF-07, EC-23/EC-42. |
+| Sem cache e sem retry automático | TanStack Query, stale-while-revalidate, backoff ou service worker. | Menos automação e maior dependência de conexão, mas sem estado/cache desnecessário ou cascata de tentativas. Preservar somente snapshot visível na sessão e retry manual. | RF-05/RF-08, EC-25/EC-26. |
+| Celsius de origem e conversão derivada | Guardar ambas as unidades ou requisitar cada unidade ao provedor. | Recalcula poucos números no render, evita estado divergente e rede adicional; arredondar só na apresentação. | RF-04, EC-21/EC-44. |
+| Dados parciais | Rejeitar toda a resposta se qualquer campo faltar. | Mantém utilidade, mas exige avisos e associação segura. Falha total quando nada utilizável; remoção permanente exige revisão, não placeholder eterno. | RF-02/RF-03, EC-36. |
+| Estado local e reducer | Redux/Zustand ou múltiplos estados independentes. | Sem store global ou flags contraditórias; tokens/invariantes exigem testes de concorrência. Reconsiderar compartilhamento só se novos consumidores concretos surgirem. | RF-07/RF-08. |
+| APIs externas com políticas próprias | Hospedagem própria do provedor ou eliminação da geolocalização. | Cliente não controla logs externos; self-hosting adicionaria operação e remover localização mudaria o produto. Informar destinatários, usar HTTPS e impedir logs próprios sensíveis. | RNF-06. |
+| Testes determinísticos + smoke live separado | Toda a suíte usando API real. | Mock pode divergir do contrato; rede real torna CI instável e consome quota. Fixtures representativas, integração real limitada e atualização do contrato sem usar falha externa como aceite. | RNF-03/RNF-04. |
+| Vitest concentrado em regras, Playwright em jornadas | Repetir todas as combinações no navegador ou testar só unidades. | Pirâmide reduz custo/latência sem perder integração; E2E verifica render, rede, persistência e concorrência essencial, unidades cobrem combinações extensas. | Todos os CA/EC. |
+| Emulação mobile e WebKit no CI | Apenas dispositivos reais ou somente desktop. | Execução acessível e reproduzível, mas não garante teclado virtual, hardware ou Safari/iOS reais. Completar aceite manual na matriz da spec. | RNF-01/RNF-02/RNF-07. |
 
 Publicação continua separada do desenvolvimento: checklist operacional, headers de proteção, atribuição, termos, retenção de logs e responsáveis permanecem os da spec. Servidor estático deve restringir CSP às próprias fontes e aos dois hosts oficiais de conexão, impedir enquadramento, usar `Referrer-Policy: no-referrer` e `Permissions-Policy` de geolocalização para a própria origem. Não definir um provedor de hospedagem nem anunciar SLA neste plano.
