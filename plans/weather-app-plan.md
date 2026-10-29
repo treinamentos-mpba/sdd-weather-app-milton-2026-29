@@ -281,6 +281,42 @@ Assinaturas podem ser exportações de funções, sem implementar uma classe `We
 9. **Apagar (RF-07):** remover somente chave própria; após sucesso, limpar identidade lembrada e unidade persistida, usar Celsius e manter consulta visível se houver. Respostas pendentes e atualização não escrevem preferências; nova escolha salva somente o campo escolhido.
 10. **Passagem do tempo (RF-03/RF-08):** relógio local de apresentação, sem fetch periódico, recalcula idade e mudança de dia. Reavaliar ao retornar à aba; timers suspensos pelo navegador não disparam atualização meteorológica.
 
+### Diagrama do fluxo de busca e consulta
+
+As setas representam eventos e dados, não importações. O hook coordena as chamadas e aceita somente respostas da intenção vigente; componentes não acessam serviços diretamente. Busca e forecast mantêm estados independentes.
+
+```mermaid
+flowchart TD
+    Input["Input de busca: envio por botão ou Enter"] --> Validate{"Termo após trim está vazio?"}
+    Validate -->|Sim| Invalid["UI: orientação no campo, sem request"]
+    Validate -->|Não| SearchHook["Hook useWeatherApp: busca loading"]
+    SearchHook --> Geocoding["Service de geocoding"]
+    Geocoding --> SearchResult{"Resultado validado"}
+    SearchResult -->|Lista vazia válida| Empty["Hook: busca empty"]
+    Empty --> EmptyUI["UI: nenhuma cidade encontrada"]
+    EmptyUI -->|Nova busca| Input
+    SearchResult -->|Rede, API, timeout ou resposta inválida| SearchError["Hook: busca error"]
+    SearchError --> SearchErrorUI["UI: erro e nova tentativa manual"]
+    SearchErrorUI -->|Repetir termo enviado, se permitido| SearchHook
+    SearchResult -->|Cidades utilizáveis| SearchSuccess["Hook: busca success"]
+    SearchSuccess --> ResultsUI["UI: lista com contexto regional"]
+    ResultsUI --> Selection["Seleção explícita de cidade"]
+    Selection --> ForecastHook["Hook: novo alvo, forecast loading"]
+    ForecastHook --> Forecast["Service de forecast: current e daily"]
+    Forecast --> WeatherResult{"Dados normalizados"}
+    WeatherResult -->|Completos ou parciais utilizáveis| WeatherSuccess["Hook: consulta success com WeatherData"]
+    WeatherSuccess --> WeatherUI["UI: clima atual, cinco dias e avisos"]
+    WeatherResult -->|Falha ou nenhuma seção utilizável| WeatherError["Hook: consulta error"]
+    WeatherError --> WeatherErrorUI["UI: erro e nova tentativa manual"]
+    WeatherErrorUI -->|Repetir alvo, se permitido| ForecastHook
+    WeatherUI -->|Atualização manual do mesmo alvo| ForecastHook
+    WeatherUI -->|Trocar unidade| Unit["Hook: alterar Unit"]
+    Unit --> Derived["Derivar temperaturas na renderização, sem request"]
+    Derived --> WeatherUI
+```
+
+Nos caminhos de retry, respeitar bloqueio do serviço por `Retry-After`, prazo de 10 s por operação e ausência de repetição automática. Em refresh do mesmo alvo, preservar snapshot visível durante loading e, em falha, com “Não atualizados”; nova cidade não reutiliza dados da anterior. Forecast sem dados utilizáveis é erro, nunca `empty`. Respostas superadas não percorrem caminhos de sucesso ou erro da UI.
+
 ## External APIs
 
 ### Geocoding — RF-01
