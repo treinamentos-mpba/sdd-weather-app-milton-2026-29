@@ -24,10 +24,10 @@ As três personas têm a mesma prioridade no MVP. As metas de usabilidade são h
 | RF-02 | Exibir clima atual da cidade selecionada: temperatura, sensação térmica, condição meteorológica, umidade e velocidade do vento, com unidades identificadas. |
 | RF-03 | Exibir previsão para hoje e os quatro dias seguintes no fuso da cidade: condição meteorológica, temperaturas mínima e máxima, probabilidade de precipitação, umidade média e velocidade máxima do vento por dia. |
 | RF-04 | Iniciar temperaturas em Celsius quando não houver preferência salva, permitir alternância Celsius/Fahrenheit e atualizar todas as temperaturas exibidas. Vento usa km/h; umidade e probabilidade de precipitação usam porcentagem. |
-| RF-05 | Apresentar estados de carregamento, ausência de resultados e falha, com orientação para prosseguir. Falhas devem permitir nova tentativa; o MVP não oferece dados meteorológicos em cache. |
+| RF-05 | Apresentar carregamento, ausência de resultados, dados parciais e falhas com orientação para prosseguir. Limitar cada busca, consulta de previsão e obtenção de localização a 10 segundos, sem repetição automática; permitir nova tentativa manual, respeitando limites do provedor. Não persistir cache meteorológico; dados já visíveis podem permanecer na sessão com aviso de falha de atualização. |
 | RF-06 | Oferecer consulta pela localização do dispositivo mediante ação explícita. Solicitar permissão somente após essa ação, explicar o envio da localização ao provedor e manter busca manual disponível em caso de recusa ou indisponibilidade. |
 | RF-07 | Lembrar no navegador a identificação da última cidade selecionada e a unidade de temperatura, sem conta ou persistência no servidor. A identificação compreende nome e contexto regional; coordenadas precisas da geolocalização não são persistidas. |
-| RF-08 | Obter dados ao selecionar cidade ou solicitar localização, permitir atualização manual e mostrar quando a consulta foi realizada. Não atualizar automaticamente em segundo plano. |
+| RF-08 | Obter dados ao selecionar cidade ou solicitar localização, permitir atualização manual e mostrar horários da consulta e da observação, quando disponíveis. Marcar observações com mais de 60 minutos como desatualizadas e atualidade desconhecida quando não houver horário confiável. Não atualizar automaticamente em segundo plano; respeitar a intenção mais recente da pessoa. |
 
 ## User Stories
 
@@ -145,7 +145,7 @@ Os critérios abaixo seguem Given/When/Then (precondição/ação/resultado), po
 - **CA-07.1 — Preferências entre visitas**
   - **Given:** a pessoa selecionou uma cidade, escolheu Fahrenheit e o armazenamento local está disponível.
   - **When:** a aplicação é fechada e reaberta no mesmo navegador, sem remover os dados salvos.
-  - **Then:** a identificação da cidade e a preferência Fahrenheit são recuperadas sem exigir conta; o disparo automático de nova consulta permanece sujeito a OQ-05.
+  - **Then:** a identificação da cidade e a preferência Fahrenheit são recuperadas sem exigir conta; a pessoa confirma a cidade antes de iniciar uma nova consulta.
 - **CA-07.2 — Minimização de dados persistidos**
   - **Given:** uma cidade foi selecionada, a unidade foi alterada e uma consulta por geolocalização também foi realizada.
   - **When:** os dados persistidos pela aplicação no navegador são inspecionados.
@@ -175,7 +175,7 @@ Os critérios abaixo seguem Given/When/Then (precondição/ação/resultado), po
 | ID | Requisito e verificação |
 |---|---|
 | RNF-01 — Responsividade | Entre 320 px e 1920 px de largura, manter conteúdo e funcionalidades disponíveis sem rolagem horizontal da página. Verificar os fluxos de busca, consulta, troca de unidade, localização e erro em larguras representativas, incluindo os limites. |
-| RNF-02 — Acessibilidade | Atender WCAG 2.2 nível AA nos fluxos de busca e consulta, incluindo rótulos acessíveis, contraste, foco perceptível e operação por teclado. Combinar verificação automatizada e manual; automação isolada não demonstra conformidade. |
+| RNF-02 — Acessibilidade | Atender WCAG 2.2 nível AA nos fluxos de busca e consulta, incluindo rótulos acessíveis, contraste, foco perceptível e operação por teclado. Anunciar carregamento, resultado vazio e erro a tecnologias assistivas sem depender apenas de cor nem deslocar o foco inesperadamente. Combinar verificação automatizada e manual; automação isolada não demonstra conformidade. |
 | RNF-03 — Desempenho | Em 95% das consultas, apresentar resultado ou erro em até 3 segundos, do envio da busca até sua apresentação visível, mantendo a interface interativa. Perfil móvel aprovado: 10 Mbps e latência de 100 ms em navegador suportado. Medir desktop separadamente. Detalhes de amostragem e dispositivo constam em Open Questions. |
 | RNF-04 — Resiliência | Falhas de rede ou do provedor não devem inutilizar a aplicação; informar a falha e oferecer nova tentativa. Não há SLA de produção nem modo offline no MVP. |
 | RNF-05 — Idioma e localização | Interface em pt-BR e datas no fuso da cidade. Temperatura em Celsius inicialmente, respeitando preferência salva; alternância para Fahrenheit. Identificar km/h para vento e % para umidade e probabilidade de precipitação. |
@@ -184,25 +184,53 @@ Os critérios abaixo seguem Given/When/Then (precondição/ação/resultado), po
 
 ## Edge Cases
 
-| Cenário | Comportamento exigido ou pendência |
-|---|---|
-| Entrada vazia ou somente espaços | Regra de validação e orientação específica ainda não definida: OQ-01. Não confundir validação local com falha do provedor. |
-| Nome com acentos, escrita estrangeira ou entrada parcial | Cobertura e regras de correspondência dependem de confirmação: OQ-01. |
-| Nenhum resultado | Informar ausência de resultados e permitir nova busca (CA-05.2). |
-| Cidades homônimas | Mostrar contexto regional disponível e permitir seleção explícita (CA-01.2 e CA-01.3). |
-| Região/estado ou país ausente | Usar o contexto disponível; critério para resultados ainda indistinguíveis pendente em OQ-01. |
-| Rede ausente, erro do serviço ou limite de requisições | Informar falha, permitir nova tentativa e não oferecer dados em cache como atuais (CA-05.3 e CA-05.4). |
-| Requisição que não termina | Exige timeout e saída do carregamento; limite e regra de repetição pendentes em OQ-03. A meta p95 não define sozinha um timeout. |
-| Resposta inválida, campo ausente ou menos de cinco dias | Não inventar valores meteorológicos; apresentação parcial versus erro total pendente em OQ-02. |
-| Permissão de localização negada, indisponível ou expirada | Informar a impossibilidade e manter busca manual; limite de espera pendente em OQ-03. |
-| Localização disponível sem nome de cidade | Consulta meteorológica por localização está em escopo; forma de identificar o local e persistir a cidade pendente em OQ-04. |
-| Armazenamento local bloqueado, cheio ou com dados inválidos | Política de continuidade, aviso e recuperação pendente em OQ-05. |
-| Cidade lembrada não pode ser resolvida de forma unívoca | Não escolher homônimo silenciosamente; fluxo de restauração pendente em OQ-05. |
-| Cidade e dispositivo em datas diferentes ou mudança de horário sazonal | Usar o fuso da cidade para os cinco dias (CA-03.3). |
-| Troca de cidade durante uma consulta ou respostas fora de ordem | Não apresentar a previsão de outro local como sendo da cidade selecionada (CA-01.3). |
-| Falha de atualização após consulta bem-sucedida | Ação de nova tentativa é obrigatória; retenção ou remoção dos dados já visíveis depende de OQ-06. |
-| Horário de consulta recente com observação meteorológica antiga | Não confundir horário da consulta com horário da observação; política de atualidade pendente em OQ-06. |
-| Preferência salva em Fahrenheit | Respeitar a preferência lembrada; Celsius é o padrão quando não houver preferência (CA-04.1 e CA-07.1). |
+Os cenários EC abaixo complementam os Acceptance Criteria e também são critérios de aceite Given/When/Then. Cada linha deve ser validada com respostas, relógio, permissões e armazenamento controlados; alternativas explicitadas em uma precondição devem ser exercitadas separadamente.
+
+### Regras de comportamento
+
+- **Busca (RF-01):** envio explícito por botão ou Enter, sem consultas por digitação. Remover somente espaços nas extremidades e aceitar termos não vazios, inclusive acentos, hífens, apóstrofos e escrita não latina. Preservar a grafia e enviar/exibir texto como dado, não como instrução ou marcação. Usar até dez resultados na ordem do provedor; não garantir equivalência entre grafias nem selecionar o primeiro automaticamente. Sem contexto suficiente para distinguir resultados, informar a limitação e pedir uma busca mais específica.
+- **Dados parciais (RF-02/RF-03/RF-05):** exibir dados válidos com aviso de resposta parcial e “Sem dados” para campos ausentes, nulos, não finitos ou fora de domínio (porcentagens fora de 0–100 e vento negativo). Zero e temperaturas negativas são válidos. Não inventar valores, dias ou agregações. Quando não houver nenhum dado meteorológico utilizável, estrutura interpretável ou associação segura de local e período, informar erro.
+- **Datas e unidades (RF-03/RF-04):** associar valores às datas da resposta, nunca deslocar índices para preencher lacunas. Mostrar as cinco datas esperadas, marcando ausência de previsão sem inventá-la. Usar o calendário/fuso da cidade, não uma sequência de períodos fixos de 24 horas. Converter temperaturas a partir dos valores de origem, nunca de valores já arredondados. Exibir números com até uma casa decimal, arredondando ao mais próximo; em empate, afastar de zero; não exibir zero negativo.
+- **Espera e limites (RF-05/RF-06):** encerrar cada operação em até 10 segundos contados de seu início, inclusive enquanto se aguarda localização/permissão. Não repetir automaticamente. Após timeout, ignorar respostas tardias. Para HTTP 429, informar limite temporário; se houver `Retry-After` válido, impedir repetição da operação afetada até o prazo indicado. Sem prazo válido, oferecer nova tentativa manual sem prometer quando o serviço voltará.
+- **Concorrência (RF-01/RF-06/RF-08):** a intenção mais recente prevalece, inclusive entre localização e seleção manual ou duas atualizações da mesma cidade. Não disparar consultas idênticas simultâneas por cliques repetidos. Uma nova busca não mantém resultados anteriores selecionáveis como se fossem atuais.
+- **Preferências (RF-07):** restaurar unidade e identificação da cidade, mas solicitar confirmação e nova resolução da cidade antes de consultar; nunca escolher homônimo silenciosamente. Se o armazenamento falhar, continuar na sessão com aviso de que as preferências não foram salvas; descartar somente preferências inválidas da aplicação. Oferecer ação para apagar as preferências locais, sem apagar dados de outros sites ou aplicações.
+- **Localização (RF-06/RF-07):** sem nome confiável, identificar como “Sua localização”, sem inferir uma cidade próxima. Não persistir essa coordenada ou um nome de cidade inferido; preservar a última cidade escolhida manualmente. Ao retornar, não solicitar localização automaticamente.
+- **Atualidade (RF-08):** distinguir horário da consulta e da observação. Aos 60 minutos a observação ainda está dentro do limite; acima disso, marcar “Desatualizado”, inclusive quando o limite é ultrapassado com a tela aberta, sem disparar nova consulta. Horário ausente, inválido ou futuro implica “Atualidade desconhecida”. Falha de atualização da mesma localização mantém os dados em memória com aviso “Não atualizados” e seus horários anteriores. Ao trocar de local, não manter dados antigos identificados como se fossem do novo local.
+
+### Cenários verificáveis
+
+| ID / requisitos | Given | When | Then |
+|---|---|---|---|
+| EC-01 — RF-01 | Campo vazio ou contendo somente espaços. | A pessoa envia a busca. | Nenhuma chamada de geocoding é feita; uma orientação associada ao campo solicita o nome da cidade. |
+| EC-02 — RF-01 | Termos como “ São Paulo ”, “Tromsø”, “N'Djamena” ou “東京”, com resultados controlados do provedor. | A pessoa digita e depois envia cada termo. | Digitar não faz chamadas; enviar remove espaços externos, preserva a grafia e apresenta os resultados retornados. |
+| EC-03 — RF-01 | Entrada ou nome retornado contém caracteres de marcação, como `<` e `>`. | O texto é enviado ou apresentado na interface. | É tratado como texto, sem executar marcação; a entrada não altera os parâmetros da consulta além do valor pesquisado. |
+| EC-04 — RF-01/RF-05 | Um termo sem correspondência no catálogo e resultados de uma busca anterior. | O geocoding responde com lista vazia ou sem coleção de resultados, conforme seu contrato de resposta vazia. | Informar que nenhuma cidade foi encontrada e sugerir outra grafia; resultados antigos deixam de ser selecionáveis; não afirmar que a cidade não existe. |
+| EC-05 — RF-01 | Resultados homônimos sem contexto suficiente para distingui-los. | A lista é apresentada. | Informar a limitação e solicitar uma busca mais específica, sem selecionar automaticamente um local. |
+| EC-06 — RF-05 | Rede indisponível, HTTP 5xx ou resposta não interpretável. | A operação falha. | Encerrar carregamento, informar falha recuperável e oferecer nova tentativa manual, sem apresentar “cidade não encontrada” ou detalhes técnicos internos. |
+| EC-07 — RF-05/RF-06 | Busca, previsão ou localização não conclui. | O relógio chega a 10 segundos desde o início da operação. | Encerrar a espera com aviso de tempo excedido e opção manual; não repetir automaticamente nem aceitar resposta tardia como sucesso dessa operação. |
+| EC-08 — RF-05 | HTTP 429 com `Retry-After` válido de 30 segundos. | A resposta chega e a pessoa tenta repetir antes do prazo. | Informar limite temporário e não reenviar a operação afetada antes dos 30 segundos; depois, permitir tentativa manual, sem disparo automático. |
+| EC-09 — RF-05 | HTTP 429 sem `Retry-After` válido. | A resposta é recebida. | Informar limite temporário sem inventar prazo; permitir tentativa manual, sem repetição automática. |
+| EC-10 — RF-02/RF-03 | Local/período identificáveis e resposta com campos válidos, umidade nula e vento ausente. | Os dados são apresentados. | Mostrar os campos válidos, “Sem dados” nos ausentes e aviso de resposta parcial, sem substituir ausências por zero. |
+| EC-11 — RF-02/RF-03 | Resposta contém temperatura de 0 °C, umidade de 0%, vento zero e outro campo não finito ou porcentagem de 120%. | Os dados são apresentados. | Mostrar os zeros válidos; marcar apenas os campos inválidos como “Sem dados”, sem `NaN` ou `undefined`. |
+| EC-12 — RF-03 | Resposta com uma data ausente ou coleção de valores menor que a coleção de datas. | A previsão é apresentada. | Manter as cinco datas esperadas, marcar lacunas e resposta parcial; valores disponíveis permanecem ligados à sua data, sem deslocamento ou preenchimento inventado. |
+| EC-13 — RF-02/RF-03/RF-05 | Não há dado utilizável ou não é possível associar com segurança os valores ao local/período consultado. | A resposta é processada. | Informar falha da consulta, em vez de apresentar previsão aparentemente válida ou totalmente preenchida com zeros. |
+| EC-14 — RF-02/RF-03 | Há código meteorológico desconhecido e outras variáveis válidas. | A condição é apresentada. | Mostrar “Condição não disponível”, sem ícone arbitrário, mantendo os demais valores válidos e indicação de resposta parcial. |
+| EC-15 — RF-01/RF-08 | Consulta A pendente e, depois, consulta B para outra cidade ou atualização mais recente da mesma cidade. | B termina e A responde por último, com sucesso ou erro. | Manter o resultado/estado de B; A não substitui valores, mensagens, horários ou local da intenção mais recente. |
+| EC-16 — RF-01/RF-08 | Uma busca ou atualização está pendente. | A pessoa aciona repetidamente a mesma operação com os mesmos parâmetros. | Não iniciar consultas idênticas simultâneas; continuar permitindo editar e enviar uma busca diferente. |
+| EC-17 — RF-06/RF-08 | Localização está pendente e a pessoa seleciona manualmente uma cidade em seguida. | A localização chega depois. | Manter a cidade escolhida e não iniciar consulta pela localização tardia. |
+| EC-18 — RF-06 | Permissão negada, localização indisponível ou contexto do navegador sem suporte ao recurso. | A pessoa solicita localização. | Explicar a impossibilidade e manter busca manual, sem insistir automaticamente na permissão. |
+| EC-19 — RF-06/RF-07 | Coordenada válida sem nome confiável e uma cidade escolhida manualmente anteriormente. | A consulta por localização termina e as preferências são inspecionadas. | Identificar “Sua localização”; não salvar coordenada nem cidade inferida; preservar a última cidade manual salva. |
+| EC-20 — RF-03 | Respostas controladas atravessam virada de ano ou transição de horário de verão, com dispositivo em outro fuso. | Os cinco dias são apresentados. | Mostrar cinco datas consecutivas do calendário da cidade, sem duplicação, omissão ou deslocamento por offset fixo. |
+| EC-21 — RF-04 | Temperatura de origem de 12,34 °C. | A pessoa alterna Celsius/Fahrenheit dez vezes e retorna a Celsius. | Mostrar 12,3 °C ao final e 54,2 °F em Fahrenheit, sem acumular erro de conversão nem alterar outras unidades. |
+| EC-22 — RF-07 | Armazenamento bloqueado, cheio ou com preferências inválidas. | A aplicação tenta salvar ou recuperar preferências. | Informar a impossibilidade de lembrar preferências, usar somente valores válidos e manter busca/consulta na sessão sem conta ou persistência em servidor. |
+| EC-23 — RF-07 | Cidade salva em contexto regional ambíguo e unidade Fahrenheit válida. | A pessoa retorna e confirma a consulta da cidade lembrada. | Preservar Fahrenheit e pedir seleção entre correspondências; não consultar automaticamente um homônimo. |
+| EC-24 — RF-07 | Preferências da aplicação estão salvas. | A pessoa aciona apagar preferências. | Remover cidade/unidade persistidas pela aplicação e confirmar a ação; em uma nova abertura, não restaurá-las nem remover dados de outras aplicações. |
+| EC-25 — RF-05/RF-08 | Dados da cidade A estão visíveis e sua atualização falha. | A falha é recebida. | Manter os dados de A em memória com “Não atualizados”, horários anteriores e nova tentativa; não atualizar o horário de sucesso nem persistir previsão. |
+| EC-26 — RF-05/RF-08 | Dados da cidade A estão visíveis. | A pessoa seleciona B e a consulta de B falha. | Identificar a falha de B sem apresentar os dados de A como sendo de B. |
+| EC-27 — RF-08 | Observação de 13h e relógio controlado às 14h no mesmo fuso. | A consulta é apresentada e o relógio avança um minuto. | Aos 60 minutos, não marcar por idade; aos 61, marcar “Desatualizado”, sem nova chamada automática e distinguindo observação de consulta. |
+| EC-28 — RF-08 | Observação sem horário válido ou com horário no futuro. | Os dados são apresentados. | Mostrar “Atualidade desconhecida” em vez de afirmar que são atuais; preservar o horário da consulta bem-sucedida como informação distinta. |
+| EC-29 — RF-05 | Pessoa usando teclado e leitor de tela. | A consulta passa por carregamento e termina sem resultados ou com erro. | Anunciar o estado relevante, manter foco previsível e acesso por teclado à recuperação; não comunicar apenas por cor. |
+| EC-30 — RF-04/RF-07 | Unidade Fahrenheit válida salva e nenhuma nova escolha de unidade. | A pessoa confirma a cidade e a consulta termina. | Apresentar temperaturas em Fahrenheit, não sobrescrever a preferência com Celsius. |
 
 ## Assumptions
 
@@ -223,7 +251,7 @@ As probabilidades são avaliações qualitativas do discovery, não estimativas 
 |---|---|---|---|
 | Indisponibilidade, limite ou mudança do provedor | Média | Alto: ausência de dados e necessidade de rever integração. | Informar falhas, permitir nova tentativa, evitar requisições desnecessárias e verificar termos e limites antes da publicação. |
 | Campos diários exigidos não disponíveis ou com semântica diferente | Média | Alto: retrabalho nos requisitos e apresentação. | Verificar umidade média, vento máximo e probabilidade de precipitação antes de fechar contratos; resolver OQ-02 sem inventar agregações. |
-| Dados desatualizados apresentados como atuais | Média | Alto: decisões baseadas em informações antigas. | Distinguir horário de consulta e observação e resolver política de atualidade em OQ-06. |
+| Dados desatualizados apresentados como atuais | Média | Alto: decisões baseadas em informações antigas. | Distinguir consulta de observação; aplicar aviso acima de 60 minutos ou de atualidade desconhecida e sinalizar falhas de atualização. |
 | Cidade homônima ou localização incorreta | Média | Alto: previsão do local errado. | Mostrar contexto regional, exigir seleção e validar identidade da cidade consultada. |
 | Personas e métricas ainda não validadas | Média | Alto: retrabalho e valor do produto incerto. | Validar tarefas das três personas com usuários antes de ampliar o escopo. |
 | Desempenho ruim em mobile ou rede lenta | Média | Alto: abandono ou consulta frustrada. | Medir p95 no perfil aprovado e manter a interface interativa. |
@@ -248,17 +276,21 @@ As probabilidades são avaliações qualitativas do discovery, não estimativas 
 
 ## Open Questions
 
-As questões abaixo não impedem usar este documento como base de discussão, mas impedem considerar fechados os comportamentos ou critérios afetados. Não há decisão implícita entre as alternativas.
+As questões abaixo não impedem usar este documento como base de discussão, mas impedem considerar fechados os comportamentos ou critérios afetados. Os IDs são preservados para rastreabilidade; OQ-01 e OQ-03 a OQ-06 foram resolvidas pelas regras e cenários de Edge Cases. Os limites de 10 segundos e 60 minutos foram confirmados pelo usuário; os demais comportamentos incorporam as recomendações autorizadas para o MVP.
 
 | ID | Pergunta e alternativas a decidir | Impacto e momento de resolução |
 |---|---|---|
-| OQ-01 | Como funciona a busca: envio explícito ou sugestões durante digitação, tamanho mínimo, espaços, acentos, idiomas, ordenação e limite de resultados? Como distinguir locais quando o provedor não oferece contexto suficiente? | Afeta UX, número de chamadas e testes de RF-01. Resolver antes de detalhar o fluxo de busca. |
-| OQ-02 | O provedor oferece todos os campos diários com a semântica exigida? Qual agregação representa a probabilidade diária? Se faltarem campos, mostrar dados parciais, calcular a partir de dados disponíveis ou rever o requisito? Como arredondar temperaturas e demais valores? | Afeta RF-02/RF-03 e o contrato de dados. Confirmar antes de fechar o plano e os critérios para respostas incompletas. |
-| OQ-03 | Qual o timeout da busca, previsão e localização? Haverá apenas tentativa manual ou alguma repetição automática limitada? | Evita carregamento indefinido e excesso de requisições. Resolver antes de implementar estados de erro; p95 de 3 segundos não equivale a timeout obrigatório de 3 segundos. |
-| OQ-04 | Como identificar a cidade de uma coordenada do dispositivo sem pressupor geocodificação reversa disponível? Qual local será lembrado quando a consulta usar localização? | Afeta RF-06/RF-07, identificação do local e dependência de dados adicionais. Resolver no planejamento da integração. |
-| OQ-05 | Restaurar a cidade deve disparar nova consulta ou pedir confirmação? Como preservar sua identidade sem coordenadas precisas? Como informar falha ou indisponibilidade do armazenamento e permitir apagar preferências? | Afeta persistência, privacidade e comportamento ao retornar. Resolver antes de implementar RF-07. |
-| OQ-06 | Qual idade máxima é aceitável para dados atuais? Mostrar também o horário da observação? Manter informações anteriores claramente marcadas ou removê-las quando uma atualização falhar? | Evita confundir horário de consulta com atualidade meteorológica. Resolver antes de fechar a apresentação de dados e erros. |
+| OQ-02 | O provedor oferece todos os campos diários com a semântica exigida? Qual agregação representa a probabilidade diária? | Confirmar antes de fechar o contrato de dados. Se um campo não estiver disponível, aplicar a política de resposta parcial; não calcular agregações novas sem rever a especificação. Arredondamento e tratamento de ausências estão definidos em Edge Cases. |
 | OQ-07 | Qual dispositivo, perfil de processamento, amostra e conjunto de consultas serão usados para medir desempenho? A métrica engloba busca de cidade, previsão ou o fluxo completo? Como registrar resultados no desktop? | O perfil de rede foi aprovado, mas esses detalhes faltam para uma medição reproduzível. Fechar no plano de validação antes de avaliar RNF-03. |
 | OQ-08 | Quais versões e sistemas operacionais compõem a matriz de navegadores e quais tecnologias assistivas serão usadas na validação manual? | Necessário para verificar RNF-02/RNF-07. Registrar no plano de testes. |
 | OQ-09 | Quais são os termos atuais do Open-Meteo, atribuição exigida, limites e permissão para o contexto de publicação? | Pode alterar integração ou viabilidade da publicação. Confirmar antes de publicar; não presumir uso comercial gratuito. |
 | OQ-10 | Antes de produção, quem responde por hospedagem, monitoramento, suporte, logs operacionais e eventual disponibilidade contratada? | O MVP não tem SLA; definir responsabilidades e tratamento de dados operacionais antes de lançamento para usuários reais. |
+
+### Referências de relatos da comunidade
+
+Os relatos abaixo motivam cenários defensivos; não comprovam que esses problemas persistem na API pública atual ou que se aplicam diretamente à previsão de cinco dias.
+
+- [Diacríticos na busca de localidades](https://github.com/open-meteo/geocoding-api/issues/34): reforça EC-02 e EC-04.
+- [Limite de requisições em consultas em lote](https://github.com/open-meteo/open-meteo/issues/1086): reforça EC-08, EC-09 e EC-16.
+- [Discussão de fusos e horário de verão](https://github.com/open-meteo/open-meteo/issues/488): reforça EC-20.
+- [Valores nulos em instância própria da API histórica](https://github.com/open-meteo/open-meteo/issues/444): reforça EC-10 a EC-12, sem pressupor falha equivalente na API pública.

@@ -76,6 +76,8 @@ A aplicação permite pesquisar cidades no mundo todo e consultar o clima atual 
 - **Operação do MVP:** escopo de treinamento, sem SLA de produção.
 - **Prioridade:** atender às três personas igualmente no MVP, sem priorização até validação com usuários.
 - **Desempenho:** aprovada a meta p95 de até 3 segundos e o perfil móvel de teste de 10 Mbps/100 ms; desktop será medido separadamente.
+- **Espera máxima:** 10 segundos por busca, consulta de previsão e obtenção de localização, sem repetição automática. Esse limite não substitui a meta p95 de desempenho.
+- **Atualidade:** marcar observações com mais de 60 minutos como desatualizadas; se uma atualização falhar, manter os dados da mesma localização já visíveis na sessão com aviso e horários anteriores, sem cache persistente.
 
 ### Defaults recomendados para o MVP
 
@@ -85,3 +87,7 @@ A aplicação permite pesquisar cidades no mundo todo e consultar o clima atual 
 - **Atualização e falhas:** consultar ao selecionar cidade ou localização, permitir atualização manual e apresentar horário da consulta; sem atualização automática ou cache/offline no MVP; permitir nova tentativa em caso de falha.
 - **Armazenamento e privacidade:** manter apenas cidade selecionada e unidade no armazenamento local; sem analytics no MVP.
 - **Compatibilidade:** validar fluxos principais nas versões atuais dos navegadores evergreen Chrome, Edge, Firefox e Safari; detalhar a matriz no plano de testes.
+
+### Detalhamento dos edge cases
+
+Os comportamentos de entrada inválida, resposta parcial, concorrência, limites do provedor, localização, preferências e atualidade estão detalhados nos cenários EC-01 a EC-30 de [weather-app-spec.md](weather-app-spec.md). Esses cenários complementam os requisitos do discovery sem acrescentar suporte offline, cache persistente ou geocodificação reversa obrigatória.
