@@ -20,6 +20,8 @@ As três personas têm a mesma prioridade no MVP. As metas de usabilidade são h
 
 ## Functional Requirements
 
+**Protótipo de UI autorizado:** enquanto a integração com a API não estiver disponível, a aplicação pode abrir com o mock fixo de Salvador, sempre identificado como demonstração sem previsão real. Um seletor explícito permite visualizar idle/loading/empty/error/success; a busca local reconhece somente Salvador e orienta essa limitação. Unidade é estado local de UI, sem rede ou persistência. Esse protótipo não comprova os fluxos reais de consulta do MVP.
+
 | ID | Requisito |
 |---|---|
 | RF-01 | Permitir buscar cidades globalmente pelo nome e selecionar o local desejado. Diferenciar resultados por cidade, região/estado e país, quando disponíveis. |

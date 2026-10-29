@@ -617,6 +617,8 @@ Implementação incremental de T-47/T-48: `lib/format.ts` formata datas locais a
 
 ## Entrega 6 — Integração em App
 
+**Entrega visual antecipada autorizada (T-50/T-54/T-56):** compor `App.tsx` com mock identificado, header com marca/SearchBar/`UnitToggle.tsx`, unidade local e seletor explícito de cinco estados. Testes em `tests/unit/App.test.tsx` verificam cinco cards, conversão sem rede, busca local e recuperação manual; `tests/unit/UnitToggle.test.tsx` verifica radios controlados por teclado. O protótipo não conclui integração real, persistência ou concorrência. A abertura com mock é exclusiva desta etapa demonstrativa e substitui temporariamente o shell vazio de T-40.
+
 Cada tarefa desta entrega altera somente a ligação de props/callbacks indicada. Os serviços e componentes já foram implementados e testados nas dependências; não reimplementar regras em App.
 
 ### T-53 — Conectar busca e seleção em App
