@@ -4,6 +4,22 @@ import { describe, expect, it, vi } from 'vitest';
 import SearchBar from '../../src/components/SearchBar';
 
 describe('SearchBar', () => {
+  it.each([
+    'Tromsø',
+    "N'Djamena",
+    '東京',
+    'Belo-Horizonte',
+    '<b>São Paulo & região?</b>',
+  ])('preserva a grafia de %s e só dispara ao enviar (EC-02/03)', async (term) => {
+    const user = userEvent.setup();
+    const onSearch = vi.fn();
+    render(<SearchBar onSearch={onSearch} />);
+    await user.type(screen.getByRole('textbox', { name: 'Nome da cidade' }), ` ${term} `);
+    expect(onSearch).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Buscar' }));
+    expect(onSearch).toHaveBeenCalledExactlyOnceWith(term);
+  });
+
   it.each(['button', 'enter'])('envia a cidade com trim por %s', async (method) => {
     const user = userEvent.setup();
     const onSearch = vi.fn();

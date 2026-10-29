@@ -69,10 +69,13 @@ test('busca cidade, apresenta cinco dias e converte a temperatura sem nova consu
   await expectWeatherFlow(page);
 });
 
-test('mostra estado vazio quando o geocoding não retorna results', async ({ page }) => {
+test('remove resultados anteriores quando o geocoding não retorna results (EC-04)', async ({
+  page,
+}) => {
   let forecastRequests = 0;
   await page.route('https://geocoding-api.open-meteo.com/**', async (route) => {
-    await route.fulfill({ json: {} });
+    const query = new URL(route.request().url()).searchParams.get('name');
+    await route.fulfill({ json: query === 'Berlim' ? geocodingResponse : {} });
   });
   await page.route('https://api.open-meteo.com/**', async (route) => {
     forecastRequests++;
@@ -80,13 +83,76 @@ test('mostra estado vazio quando o geocoding não retorna results', async ({ pag
   });
 
   await page.goto('/');
-  await page.getByRole('textbox', { name: 'Nome da cidade' }).fill('Cidade inexistente');
+  const input = page.getByRole('textbox', { name: 'Nome da cidade' });
+  await input.fill('Berlim');
+  await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Berlim, Berlim, Alemanha' })).toBeVisible();
+  await input.fill('Cidade inexistente');
   await page.getByRole('button', { name: 'Buscar', exact: true }).click();
 
   await expect(page.getByRole('status')).toContainText('Nenhuma cidade encontrada');
   await expect(page.getByRole('region', { name: 'Escolha uma cidade' })).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Previsão de 5 dias' })).toHaveCount(0);
   expect(forecastRequests).toBe(0);
+});
+
+test('não consulta APIs ao enviar busca vazia ou só espaços (EC-01)', async ({ page }) => {
+  let requests = 0;
+  for (const endpoint of [
+    'https://geocoding-api.open-meteo.com/**',
+    'https://api.open-meteo.com/**',
+  ]) {
+    await page.route(endpoint, async (route) => {
+      requests++;
+      await route.fulfill({ json: {} });
+    });
+  }
+  await page.goto('/');
+  const input = page.getByRole('textbox', { name: 'Nome da cidade' });
+  for (const value of ['', '   ']) {
+    await input.fill(value);
+    await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+    await expect(input).toHaveAttribute('aria-invalid', 'true');
+    await expect(input).toHaveAccessibleDescription('Informe o nome de uma cidade.');
+    await expect(page.getByRole('alert')).toHaveText('Informe o nome de uma cidade.');
+  }
+  expect(requests).toBe(0);
+});
+
+test('preserva caracteres especiais na consulta e apresenta marcação como texto (EC-02/03)', async ({
+  page,
+}) => {
+  const term = "<b>Tromsø & N'Djamena? 東京</b>";
+  let requestedUrl: URL | undefined;
+  let forecasts = 0;
+  await page.route('https://geocoding-api.open-meteo.com/**', async (route) => {
+    requestedUrl = new URL(route.request().url());
+    await route.fulfill({
+      json: {
+        results: [{ ...geocodingResponse.results[0], name: term, admin1: null, country: null }],
+      },
+    });
+  });
+  await page.route('https://api.open-meteo.com/**', async (route) => {
+    forecasts++;
+    await route.fulfill({ json: forecastResponse() });
+  });
+  await page.goto('/');
+  await page.getByRole('textbox', { name: 'Nome da cidade' }).fill(` ${term} `);
+  expect(requestedUrl).toBeUndefined();
+  await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+  const choice = page.getByRole('button', { name: term, exact: true });
+  await expect(choice).toBeVisible();
+  await expect(choice).toHaveText(term);
+  await expect(choice.locator('b')).toHaveCount(0);
+  expect(requestedUrl?.searchParams.get('name')).toBe(term);
+  expect(Array.from(requestedUrl?.searchParams.keys() ?? []).sort()).toEqual([
+    'count',
+    'format',
+    'language',
+    'name',
+  ]);
+  expect(forecasts).toBe(0);
 });
 
 for (const failure of ['http', 'network', 'json', 'incomplete'] as const) {
