@@ -3,16 +3,22 @@ import { getWeatherCondition } from '../../src/lib/weatherCodes';
 
 describe('getWeatherCondition', () => {
   it.each([
-    [0, 'Céu limpo'],
-    [2, 'Parcialmente nublado'],
-    [61, 'Chuva leve'],
-    [99, 'Trovoada com granizo intenso'],
-  ])('apresenta condição %s como texto com ícone', (code, label) => {
-    expect(getWeatherCondition(code).label).toBe(label);
-    expect(getWeatherCondition(code).icon).toBeTruthy();
+    [0, 'Céu limpo', '☀️'],
+    [2, 'Parcialmente nublado', '⛅'],
+    [61, 'Chuva leve', '🌧️'],
+    [99, 'Trovoada com granizo intenso', '⛈️'],
+  ])('apresenta condição %s como texto com ícone', (code, label, icon) => {
+    expect(getWeatherCondition(code)).toEqual({ label, icon });
   });
 
-  it.each([null, -1, 100, Number.NaN])('não inventa ícone para código %s', (code) => {
+  it.each([
+    null,
+    -1,
+    4,
+    100,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+  ])('não inventa ícone para código %s', (code) => {
     expect(getWeatherCondition(code)).toEqual({
       label: 'Condição não disponível',
       icon: null,
