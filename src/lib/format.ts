@@ -5,7 +5,7 @@ const metricFormatter = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 
 
 export function formatMetric(value: number | null, suffix: string): string {
   return typeof value === 'number' && Number.isFinite(value)
-    ? `${metricFormatter.format(value)} ${suffix}`
+    ? `${metricFormatter.format(Math.abs(value) < 0.05 ? 0 : value)} ${suffix}`
     : 'Sem dados';
 }
 
