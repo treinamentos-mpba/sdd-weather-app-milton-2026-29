@@ -337,6 +337,12 @@ Nos caminhos de retry, respeitar bloqueio do serviço por `Retry-After`, prazo d
 
 ### Geocoding — RF-01
 
+`services/geocoding.ts` implementa o contrato `Result<CitySearchResult>` acima;
+`services/weatherService.ts` apenas reexporta a função para preservar o caminho
+solicitado. O protótipo de UI continua sem integração com a rede. Cancelamento
+externo rejeita com `AbortError` sanitizado, a ser descartado pelo controlador
+conforme signal/token; não é convertido em `AppError` notificável.
+
 `GET https://geocoding-api.open-meteo.com/v1/search`
 
 | Parâmetro | Contrato |

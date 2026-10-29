@@ -259,6 +259,12 @@ Cada ID aparece em uma única fatia; tarefas de fatias anteriores são reutiliza
 
 ### T-18 — Implementar serviço de geocoding
 
+> Implementação segue `Result<CitySearchResult>` e `RequestContext` do plano em
+> `src/services/geocoding.ts`, reexportada por `weatherService.ts`. Transporte
+> compartilhado trata deadline, cancelamento e prazo de 429; aplicar o bloqueio
+> na UI continua responsabilidade de T-29. Testes ficam em
+> `tests/unit/geocoding.test.ts` e `tests/unit/http.test.ts`; sem integração da UI.
+
 - **ID:** T-18
 - **Tipo:** Data
 - **Descrição:** Consultar e validar cidades globais.
