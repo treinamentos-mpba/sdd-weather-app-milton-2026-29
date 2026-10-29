@@ -16,7 +16,7 @@ O backlog anterior reunia responsabilidades distintas mesmo em tarefas de apenas
 | Hook e reducer | T-24 a T-38 |
 | Componentes e shell | T-39 a T-52 |
 | Integração em App | T-53 a T-58 |
-| Testes, infraestrutura de teste e evidências | T-59 a T-75; T-79 a T-81; T-83 a T-92 |
+| Testes, infraestrutura de teste e evidências | T-100 a T-103; T-59 a T-75; T-79 a T-81; T-83 a T-92 |
 | Hardening, CI e gates finais | T-76 a T-78; T-82; T-93 a T-99 |
 
 As etapas orientam a sequência, mas não criam barreiras artificiais: **Dependências** lista os pré-requisitos reais de cada tarefa. “Nenhuma” significa que ela pode começar sem outra tarefa concluída. Testes focados acompanham cada implementação; fixtures T-16/T-17 precedem seus services consumidores e ferramentas T-61 a T-64/T-79 precedem as suítes que as utilizam. Tarefas independentes podem avançar em paralelo apenas se não houver disputa pelos mesmos arquivos. Validações finais de hardening não adiam as proteções já exigidas nos tipos, funções, services e hook.
@@ -33,7 +33,7 @@ As etapas orientam a sequência, mas não criam barreiras artificiais: **Depend�
 - Não liberar incrementos intermediários sem as proteções dependentes. Sem retry automático, polling meteorológico, cache persistente, backend ou funcionalidades fora da spec.
 - Evidências incluem tarefa, CA/EC/RNF, resultado, comando/procedimento, ambiente e limitações. Falha, skip ou ambiente indisponível deixa pendência. Correção descoberta em tarefa Test não autoriza editar UI/dados nessa mesma tarefa: abrir unidade corretiva com os mesmos limites e repetir a evidência afetada.
 
-### Protocolo de aceite aplicável às 99 tarefas
+### Protocolo de aceite aplicável às 103 tarefas
 
 - **Aprovação binária:** todas as condições da tarefa devem ser demonstradas. Casos separados por barra ou enumerados como alternativas exigem verificações separadas, não a escolha de apenas um. Existência de arquivo, teste ou script não é aprovação.
 - **Entrada → ação → saída:** cada teste/procedimento identifica a entrada controlada, executa a ação indicada e compara a saída com o resultado escrito no critério ou no CA/EC referenciado. “Cobrir” significa ter assertions do resultado, não apenas executar código. Não derivar o valor esperado chamando a própria função testada.
@@ -640,6 +640,48 @@ Cada tarefa desta entrega altera somente a ligação de props/callbacks indicada
 
 Tarefas E2E consomem componentes e dados prontos; não incluem correções de implementação. Executar os fluxos principais de busca, unidade, recuperação e preferências também nos projetos móveis. Outras combinações extensas permanecem no nível unitário responsável.
 
+As tarefas T-100 a T-103 são dedicadas exclusivamente a testes, sem mudanças em `src/`. Consolidam os testes focados das implementações: manter casos existentes que já comprovem os critérios e adicionar somente lacunas, sem duplicar cenários ou criar testes triviais. Seus IDs dão continuidade ao backlog, sem renumerar referências anteriores.
+
+### T-100 — Testar conversão de unidade com Vitest
+
+- **ID:** T-100
+- **Tipo:** Test
+- **Descrição:** Consolidar a suíte unitária da conversão e do arredondamento.
+- **Critérios de aceite:** `pnpm exec vitest run tests/unit/units.test.ts` encerra com código 0, sem casos ignorados. Assertions com resultados literais verificam 0 → 32, 100 → 212, −40 → −40, `null` indisponível e zero válido; 12,34 °C permanece 12,3 °C após dez alternâncias e equivale a 54,2 °F. Em Celsius, −1,25/1,25/−0,04 resultam em −1,3/1,3/0, sem zero negativo. Testar a função real, sem mockar conversão, rede ou componentes.
+- **Dependências:** T-04.
+- **Arquivos prováveis:** `tests/unit/units.test.ts`.
+- **Rastreabilidade:** CA-04.1 a CA-04.4; EC-21, EC-34; RNF-05.
+
+### T-101 — Testar geocoding com mock de fetch
+
+- **ID:** T-101
+- **Tipo:** Test
+- **Descrição:** Consolidar testes do serviço real substituindo somente fetch e relógio.
+- **Critérios de aceite:** `pnpm exec vitest run tests/unit/geocoding.test.ts` encerra com código 0, sem casos ignorados e sem rede real. Mock verifica endpoint, parâmetros fixos, encoding de termo com `&`/`?`, sinal e `redirect: 'error'`. Casos separados comparam lista válida, ordem/limite de dez, vazio documentado, parcial por descarte, todos os itens inválidos, JSON inválido, HTTP 400/500/429 e rejeição de rede aos respectivos `Result`/erros do plano. Nenhuma falha vira lista vazia; restaurar mocks/timers após cada caso.
+- **Dependências:** T-18.
+- **Arquivos prováveis:** `tests/unit/geocoding.test.ts`.
+- **Rastreabilidade:** CA-01.1, CA-01.2, CA-05.2, CA-05.3; EC-03, EC-04, EC-06, EC-08, EC-09, EC-35; RNF-06.
+
+### T-102 — Testar forecast com mock de fetch
+
+- **ID:** T-102
+- **Tipo:** Test
+- **Descrição:** Consolidar testes da fronteira forecast sem substituir o normalizador.
+- **Critérios de aceite:** `pnpm exec vitest run tests/unit/forecast.test.ts` encerra com código 0, sem casos ignorados e sem rede real. Mock compara todos os parâmetros current/daily/unidades/fuso do plano; resposta completa retorna valores normalizados esperados, parcial preserva somente campos válidos e ausência total utilizável retorna erro. Exercitar HTTP 500/429, rejeição de rede, corpo inválido, timeout aos 10.000 ms e sinal cancelado; nenhum retorno tardio é utilizável. Identidade permanece a do alvo, não a grade. Usar fixtures de T-17 sem editar; restaurar mocks/timers por caso.
+- **Dependências:** T-19.
+- **Arquivos prováveis:** `tests/unit/forecast.test.ts`.
+- **Rastreabilidade:** CA-02.1, CA-03.1, CA-03.2, CA-05.3; EC-06 a EC-13, EC-36, EC-43.
+
+### T-103 — Testar componentes em loading, erro e vazio
+
+- **ID:** T-103
+- **Tipo:** Test
+- **Descrição:** Consolidar testes de apresentação isolada com Testing Library e user-event.
+- **Critérios de aceite:** `pnpm exec vitest run tests/components/CitySearch.test.tsx tests/components/QueryFeedback.test.tsx` encerra com código 0, sem casos ignorados. Com props controladas, loading tem status acessível e campo editável; empty informa ausência de resultados com orientação, sem mensagem de rede; error informa falha e recuperação por Tab/Enter chama callback uma vez. Retry bloqueado não chama callback e explica motivo. Transições por rerender preservam foco na busca e não duplicam mensagem em regiões anunciáveis. Não montar hook/App nem chamar rede/storage; anúncio percebido continua sob T-88/T-89.
+- **Dependências:** T-43, T-45.
+- **Arquivos prováveis:** `tests/components/CitySearch.test.tsx`, `tests/components/QueryFeedback.test.tsx`.
+- **Rastreabilidade:** CA-05.1 a CA-05.3; EC-04, EC-06, EC-29; RNF-02.
+
 ### T-59 — Verificar independência entre busca e clima
 
 - **ID:** T-59
@@ -700,15 +742,15 @@ Tarefas E2E consomem componentes e dados prontos; não incluem correções de im
 - **Arquivos prováveis:** `tests/e2e/fixtures.ts`, `tests/e2e/fixtures.spec.ts`.
 - **Rastreabilidade:** RF-05; EC-07, EC-33.
 
-### T-65 — Testar busca e seleção E2E
+### T-65 — Testar fluxo principal E2E em desktop e mobile
 
 - **ID:** T-65
 - **Tipo:** Test
-- **Descrição:** Cobrir descoberta da cidade e identidade após seleção.
-- **Critérios de aceite:** Playwright desktop/mobile compara os resultados de CA-01.1 a CA-01.3 e EC-01/02/04/05/35. Contadores registram zero chamadas por digitação/vazio e zero forecast antes de seleção, uma busca por envio válido e um forecast para o alvo clicado. De 12 resultados, somente os 10 primeiros ficam selecionáveis; vazio remove seleção antiga, homônimos indistinguíveis exibem orientação.
+- **Descrição:** Cobrir busca → seleção explícita → condições atuais e previsão, incluindo viewport mobile.
+- **Critérios de aceite:** Após `pnpm build`, Playwright executa `tests/e2e/search.spec.ts` contra preview nos projetos desktop e nos móveis de T-62, incluindo Chromium touch **390 × 844**. Jornada principal envia busca, seleciona um homônimo e verifica cidade correta, valores atuais da fixture e exatamente cinco datas diárias em ordem. Comparar CA-01.1 a CA-01.3 e EC-01/02/04/05/35; contadores registram zero chamadas por digitação/vazio e zero forecast antes de seleção, uma busca por envio válido e um forecast para o alvo clicado. De 12 resultados, somente os 10 primeiros ficam selecionáveis; vazio remove seleção antiga, homônimos indistinguíveis exibem orientação. Relatório identifica execução aprovada em desktop/mobile, sem skip; campos detalhados são cobertos em T-68, sem duplicar toda a matriz.
 - **Dependências:** T-54, T-64.
 - **Arquivos prováveis:** `tests/e2e/search.spec.ts`.
-- **Rastreabilidade:** CA-01.1 a CA-01.3, CA-05.2; EC-01, EC-02, EC-04, EC-05, EC-35.
+- **Rastreabilidade:** CA-01.1 a CA-01.3, CA-02.1, CA-03.1, CA-05.2; EC-01, EC-02, EC-04, EC-05, EC-35; RNF-01, RNF-07.
 
 ### T-66 — Testar recuperação de falha E2E
 
@@ -982,7 +1024,7 @@ Não presumir aprovação pela existência dos scripts. Esta entrega registra ex
 - **Tipo:** Infra
 - **Descrição:** Executar os gates existentes e projetos declarados num workflow.
 - **Critérios de aceite:** Execução identificada da CI instala Chromium/Firefox/WebKit e dependências do sistema; cada comando `pnpm lint`, `pnpm check`, `pnpm build`, `pnpm test`, `pnpm test:e2e` encerra com código 0 e build precede E2E. Relatório contém os cinco projetos de T-62 e cenários previstos, sem skip tratado como cobertura; falha inicial/flaky permanece registrada, não vira aprovação por retry. Workflow declara retenção dos artefatos e somente dados sintéticos são capturados.
-- **Dependências:** T-59, T-60, T-65, T-66, T-67, T-68, T-69, T-70, T-71, T-72, T-73, T-74, T-75, T-76, T-77, T-78, T-80, T-81.
+- **Dependências:** T-100, T-101, T-102, T-103, T-59, T-60, T-65, T-66, T-67, T-68, T-69, T-70, T-71, T-72, T-73, T-74, T-75, T-76, T-77, T-78, T-80, T-81.
 - **Arquivos prováveis:** `.github/workflows/ci.yml`.
 - **Rastreabilidade:** RNF-04, RNF-06, RNF-07; gate de merge do plano.
 
@@ -1061,6 +1103,14 @@ As decisões operacionais não bloqueiam desenvolver o MVP. Não escolher hosped
 ## Rastreabilidade para execução
 
 Referências abaixo são os **IDs atuais**. Intervalos são inclusivos. Preencher nomes concretos de testes, procedimentos e resultados em T-98; não criar cobertura duplicada para cada referência.
+
+| Cobertura dedicada solicitada | Tarefa responsável |
+|---|---|
+| Unitários de conversão, arredondamento e alternâncias | T-100 |
+| Service de geocoding com mock de fetch | T-101 |
+| Service de forecast com mock de fetch | T-102 |
+| Componentes em loading, erro e vazio | T-103 |
+| E2E busca → seleção → atuais e cinco dias, desktop/mobile 390 × 844 | T-65 |
 
 | Story / critérios principais | Comportamento e evidência integrada |
 |---|---|
