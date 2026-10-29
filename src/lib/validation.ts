@@ -8,7 +8,7 @@ function optionalText(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
-function optionalTimeZone(value: unknown): string | null {
+export function parseTimeZone(value: unknown): string | null {
   const timeZone = optionalText(value);
   if (!timeZone || /^[+-]/.test(timeZone)) return null;
 
@@ -45,6 +45,6 @@ export function parseCity(value: unknown): City | null {
     region: optionalText(value.admin1),
     country: optionalText(value.country),
     coordinates: { latitude: value.latitude, longitude: value.longitude },
-    timeZone: optionalTimeZone(value.timezone),
+    timeZone: parseTimeZone(value.timezone),
   };
 }

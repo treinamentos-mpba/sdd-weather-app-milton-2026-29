@@ -1,4 +1,5 @@
 import type { LocalDate } from '../types/weather';
+import { isLocalDate } from './dates';
 
 const metricFormatter = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
 
@@ -17,11 +18,7 @@ const dayFormatter = new Intl.DateTimeFormat('pt-BR', {
 export function formatDayLabel(date: LocalDate): string {
   // UTC preserva os componentes da data local; não representa o instante do clima.
   const parsed = new Date(`${date}T00:00:00Z`);
-  if (
-    !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
-    !Number.isFinite(parsed.getTime()) ||
-    parsed.toISOString().slice(0, 10) !== date
-  ) {
+  if (!isLocalDate(date)) {
     throw new RangeError('Data local inválida; esperado YYYY-MM-DD.');
   }
   return dayFormatter.format(parsed);

@@ -36,9 +36,13 @@ const conditions: Record<WeatherCode, WeatherCondition> = {
   99: { label: 'Trovoada com granizo intenso', icon: '⛈️' },
 };
 
+export function isWeatherCode(code: unknown): code is WeatherCode {
+  return typeof code === 'number' && Object.hasOwn(conditions, code);
+}
+
 export function getWeatherCondition(code: number | null): WeatherCondition {
-  if (code !== null && Object.hasOwn(conditions, code)) {
-    return conditions[code as WeatherCode];
+  if (isWeatherCode(code)) {
+    return conditions[code];
   }
   return { label: 'Condição não disponível', icon: null };
 }
