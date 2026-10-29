@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { searchCities } from '../../src/services/geocoding';
+import { searchCities } from '../../src/services/weatherService';
 import type { RequestContext } from '../../src/types/services';
 
 const city = {
@@ -111,6 +111,20 @@ describe('searchCities', () => {
       ok: true,
       value: { cities: [], partial: false },
     });
+  });
+
+  it.each([400, 500, 429])('retorna erro para HTTP %i, nunca lista vazia', async (status) => {
+    const fetchMock = mockResponse({}, status);
+    await expect(searchCities('Salvador', context())).resolves.toEqual({
+      ok: false,
+      error: {
+        kind: status === 429 ? 'rate-limit' : 'http',
+        service: 'geocoding',
+        status,
+        retryAtMs: null,
+      },
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it.each([

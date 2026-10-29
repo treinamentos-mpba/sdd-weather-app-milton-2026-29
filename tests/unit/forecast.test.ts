@@ -66,6 +66,20 @@ describe('fetchWeather', () => {
       },
     });
     expect(data.forecast).toHaveLength(5);
+    expect(
+      data.forecast.map((day) => ({
+        date: day.date,
+        min: day.minTemperatureC,
+        max: day.maxTemperatureC,
+        rain: day.maxPrecipitationProbabilityPct,
+      })),
+    ).toEqual([
+      { date: '2026-10-29', min: 8, max: 14, rain: 20 },
+      { date: '2026-10-30', min: 7, max: 12, rain: 70 },
+      { date: '2026-10-31', min: 6, max: 13, rain: 30 },
+      { date: '2026-11-01', min: 7, max: 11, rain: 40 },
+      { date: '2026-11-02', min: 5, max: 12, rain: 10 },
+    ]);
     expect(data.forecast[0]).toEqual({
       date: '2026-10-29',
       weatherCode: 3,
@@ -98,6 +112,22 @@ describe('fetchWeather', () => {
       expect(data.forecast).toEqual([]);
       expect(data.periodStart).toBeNull();
     }
+  });
+
+  it('mantém precipitação nula como desconhecida, sem inventar ausência de chuva', async () => {
+    const body = forecastResponse();
+    mockResponse({
+      ...body,
+      current: { ...body.current, precipitation: null },
+    });
+    const data = success(await fetchWeather(forecastLocation, context()));
+    expect(data.current).toMatchObject({
+      precipitationMm: null,
+      temperatureC: 12.3,
+      pressureMslHpa: 1013,
+    });
+    expect(data.forecast).toHaveLength(5);
+    expect(data.partial).toBe(true);
   });
 
   it('normaliza zeros, temperaturas negativas e valores inválidos independentemente', async () => {
