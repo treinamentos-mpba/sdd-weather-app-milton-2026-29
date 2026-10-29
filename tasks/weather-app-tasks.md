@@ -42,6 +42,45 @@ As etapas orientam a sequência, mas não criam barreiras artificiais: **Depend�
 - **Inspeção manual/documental:** registrar passos, resultado observado e evidência por item. Para WCAG, informar ID do critério, medição/observação e justificativa de não aplicabilidade quando houver; “parece acessível” não é resultado. Decisão operacional requer aprovação identificada do responsável, não somente um campo preenchido.
 - **Rastreabilidade:** o campo de cada tarefa aponta os requisitos aplicáveis; escolhas técnicas adicionais são verificadas contra a seção correspondente do plano, sem criar requisito de produto novo. A matriz final indica o responsável integrado por CA/EC/RNF; T-98 registra as evidências concretas.
 
+## Prioridade e tamanho relativo
+
+Esta tabela classifica **cada uma das 103 tarefas uma única vez**. Intervalos são inclusivos; a classificação se aplica individualmente a cada ID da linha.
+
+- **P0:** caminho da primeira consulta manual utilizável, recuperação essencial e testes que a comprovam.
+- **P1:** completar funcionalidades e evidências obrigatórias do MVP após esse primeiro resultado.
+- **P2:** condições operacionais e decisão de publicação, posteriores ao desenvolvimento. Não são opcionais se houver publicação para usuários reais.
+- **P (pequena):** alteração localizada ou registro de uma evidência já produzida, com poucas ramificações.
+- **M (média):** uma unidade delimitada, mas com validação, concorrência, integração ou matriz de casos. Não representa prazo em horas/dias.
+- **G (grande):** múltiplas unidades ainda não divididas. **Nenhuma tarefa recebe G** neste backlog: se a execução revelar esse tamanho, dividir antes de começar, preservando critérios/dependências.
+
+| Prioridade | Tamanho | Tarefas |
+|---|---|---|
+| P0 | P | T-01 a T-03; T-08; T-16, T-17; T-24 a T-26; T-39, T-40, T-42; T-49; T-61. |
+| P0 | M | T-04 a T-07; T-09 a T-15; T-18, T-19; T-27 a T-32; T-41; T-43 a T-48; T-53 a T-55; T-59; T-62 a T-69; T-74, T-75, T-77; T-100 a T-103; T-33, T-34. |
+| P1 | P | T-20 a T-22; T-50; T-79; T-86. |
+| P1 | M | T-23; T-35 a T-38; T-51, T-52; T-56 a T-58; T-60; T-70 a T-73; T-76, T-78; T-80 a T-85; T-87 a T-93; T-98. |
+| P2 | P | T-99. |
+| P2 | M | T-94 a T-97. |
+
+O tamanho inclui a verificação focada indicada na tarefa, mas não soma seus pré-requisitos. T-06/T-11 (tempo/normalização), T-28/T-31/T-38 (corridas), T-83 (medição) e T-97 (hospedagem) têm maior incerteza: continuam unidades delimitadas, não compromissos de prazo. Dependências prevalecem sobre prioridade; nunca iniciar um consumidor pulando um pré-requisito.
+
+## Sequência sugerida em fatias verticais
+
+As entregas por camada abaixo continuam sendo o catálogo técnico. Para executar, usar a sequência de fatias desta tabela: **dentro de cada fatia, seguir a ordem de dependências**, combinando tipos → funções → services → hook → componentes → integração → testes. Não é necessário terminar todas as tarefas de uma camada do produto antes de mostrar uma fatia.
+
+Cada ID aparece em uma única fatia; tarefas de fatias anteriores são reutilizadas. A fatia 0 é apenas preparação visual, não uma jornada vertical completa. A primeira jornada ponta a ponta é a fatia 1. Demonstrações intermediárias não equivalem a aceite do MVP nem autorizam publicação.
+
+| Fatia | Tarefas novas | Resultado visível e condição de demonstração |
+|---|---|---|
+| **0 — Tela visível primeiro** | T-39 a T-42. | Preview com shell pt-BR, tema dark, foco e fallback de render testado. Ainda sem consulta; não apresentar dados fictícios como clima real. Pode começar imediatamente, sem esperar services/hook. |
+| **1 — Buscar cidade e ver o clima** | T-01 a T-19; T-24 a T-32; T-43 a T-49; T-53, T-54; T-59; T-61 a T-69; T-77; T-100 a T-103. | Buscar, selecionar e visualizar atuais/cinco dias com atribuição, loading/vazio/erro e recuperação manual, inclusive mobile 390 × 844. Unitários/services/componentes e E2E principal aprovados. Mocks são identificados como ambiente de teste; comprovação da API real ocorre em T-85/T-86. |
+| **2 — Atualizar e entender a atualidade** | T-33, T-34, T-55; T-74, T-75; T-83 a T-86. | Atualização manual com horário, snapshot preservado em falha e avisos de idade/período sem polling. Demonstrar smoke live separado e registrar p95 dos dois perfis; falha externa ou de performance permanece pendência explícita. |
+| **3 — Personalizar e usar localização com controle** | T-20 a T-23; T-35 a T-38; T-50 a T-52; T-56 a T-58; T-60; T-70 a T-73; T-76, T-78. | Alternar unidade sem rede, consultar localização somente após informação/clique e restaurar/apagar preferências sem recriação por resposta tardia. Jornadas correspondentes demonstradas; nenhum dado preciso persistido. |
+| **4 — Fechar qualidade e aceite do MVP** | T-79 a T-82; T-87 a T-93; T-98. | Mesmas jornadas verificadas por scanner, larguras/toque, leitores de tela e navegadores reais; CI integral e matriz de aceite com evidências. Sem ambientes/evidências, manter aceite pendente. Auditoria registrada, sem confundir sua execução com correção dos achados. |
+| **5 — Preparar publicação responsável** | T-94 a T-97; T-99. | Termos, responsáveis, logs e headers do destino confirmados; decisão explícita de pronto/não pronto. Não inclui deploy nem SLA. |
+
+**Limite atual para uma fatia de busca menor:** T-53 depende de T-30, que exige forecast e suas regras de normalização. Assim, com o grafo aprovado, a busca integrada em App não é uma entrega independente do caminho meteorológico. A proposta mantém esse contrato, antecipa o shell e entrega a consulta completa na primeira fatia funcional, sem inventar seleção parcial ou remover proteções para encurtá-la.
+
 ## Entrega 1 — Tipos
 
 ### T-01 — Definir contratos meteorológicos
