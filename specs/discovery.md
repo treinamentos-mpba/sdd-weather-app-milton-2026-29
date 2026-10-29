@@ -4,11 +4,20 @@
 
 A empresa precisa de uma aplicação para que usuários consultem o clima de cidades e planejem atividades com base nas condições atuais e na previsão dos próximos dias. A experiência deve funcionar também em dispositivos móveis. O briefing ainda não define fonte de dados, nível de detalhe da previsão, tratamento de localização nem requisitos de disponibilidade.
 
-**Personas consideradas**
+## Personas
 
-- **Pessoa que organiza a rotina:** consulta o clima atual para decidir o que vestir ou como se deslocar.
-- **Viajante:** pesquisa uma cidade e consulta os próximos dias para planejar atividades e bagagem.
-- **Pessoa em mobilidade:** usa principalmente o celular e precisa consultar informações de forma rápida e legível.
+- **Pessoa que organiza a rotina diária**
+  - **Objetivo principal:** decidir o que vestir e como se deslocar com base no clima da cidade onde está.
+  - **Contexto de uso:** consulta rápida no celular, frequentemente antes de sair de casa; pode usar desktop para planejar a semana.
+  - **Métrica de sucesso para a persona:** encontrar e entender as condições atuais da cidade em até 30 segundos, sem confundir local ou unidade.
+- **Viajante que planeja os próximos dias**
+  - **Objetivo principal:** avaliar o clima de um destino para planejar atividades e escolher o que levar.
+  - **Contexto de uso:** pesquisa no desktop ao organizar a viagem e consulta novamente no celular durante o deslocamento.
+  - **Métrica de sucesso para a persona:** localizar o destino correto e consultar a previsão identificada para os cinco dias, conseguindo decidir o que levar sem precisar repetir a busca.
+- **Pessoa que consulta o clima em mobilidade**
+  - **Objetivo principal:** obter informação meteorológica legível e confiável enquanto está fora de casa, com pouco tempo ou atenção disponível.
+  - **Contexto de uso:** principalmente celular, em telas menores e possivelmente com conexão lenta ou instável.
+  - **Métrica de sucesso para a persona:** concluir a consulta no celular sem rolagem horizontal, compreender o estado da consulta e receber uma orientação clara caso os dados não carreguem.
 
 ## Requisitos Funcionais
 
