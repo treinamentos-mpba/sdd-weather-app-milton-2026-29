@@ -42,6 +42,7 @@ export default function App() {
             <SearchBar
               onSearch={(query) => void weather.search(query)}
               disabled={weather.searchBlocked}
+              busy={weather.searchState.status === 'loading'}
             />
             <UnitToggle unit={unit} onChange={setUnit} />
           </div>

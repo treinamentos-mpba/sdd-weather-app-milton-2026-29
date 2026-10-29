@@ -6,6 +6,24 @@ import ErrorState from '../../src/components/states/ErrorState';
 import LoadingState from '../../src/components/states/LoadingState';
 
 describe('Estados de apresentação', () => {
+  it('associa o motivo do bloqueio ao retry e não permite acioná-lo', async () => {
+    const user = userEvent.setup();
+    const onRetry = vi.fn();
+    render(
+      <ErrorState
+        message="Limite de consultas atingido."
+        onRetry={onRetry}
+        retryDisabled
+        retryHint="Aguarde o prazo informado pelo serviço."
+      />,
+    );
+    const retry = screen.getByRole('button', { name: 'Tentar novamente' });
+    expect(retry).toBeDisabled();
+    expect(retry).toHaveAccessibleDescription('Aguarde o prazo informado pelo serviço.');
+    await user.click(retry);
+    expect(onRetry).not.toHaveBeenCalled();
+  });
+
   it('apresenta loading em uma única região de status e permite personalizar a mensagem', () => {
     const { rerender } = render(<LoadingState />);
     expect(screen.getAllByRole('status')).toHaveLength(1);

@@ -77,7 +77,7 @@ export default function QueryFeedback({
                 type="button"
                 onClick={() => onSelect(city)}
                 disabled={ambiguous || selectionBlocked}
-                className="min-h-11 w-full break-words rounded-xl border border-white/50 bg-white/5 px-4 py-3 text-left text-white hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-400 disabled:cursor-not-allowed disabled:opacity-70"
+                className="min-h-11 w-full break-words rounded-xl border border-white/50 bg-white/5 px-4 py-3 text-left text-white enabled:hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-400 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {label}
               </button>

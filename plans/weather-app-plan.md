@@ -152,6 +152,8 @@ de UI, convertido na renderização sem rede; persistência aguarda sua entrega.
 
 Hardening do protótipo: após retry explícito que remove seu botão, focar o `main` estável; respostas de busca não deslocam foco. Controles de unidade têm alvo mínimo de 44 × 44 CSS px e bordas dos campos devem contrastar ao menos 3:1 com o fundo adjacente. `tests/e2e/accessibility.spec.ts` verifica os cinco estados em 320/390/768/1366/1920 px, scanner WCAG A/AA, navegação por teclado, toque e reflow com texto a 200%. Anúncios percebidos por leitor de tela continuam exigindo validação manual.
 
+Durante loading, o formulário de busca e a região de dados meteorológicos expõem `aria-busy` independentemente; os anúncios de carregamento ficam fora dessas áreas para não serem adiados. O campo permanece editável e a unidade operável. Hover só se aplica a botões habilitados; a orientação de retry é associada por `aria-describedby`. Não adicionar memoização sem custo observado.
+
 Contratos TypeScript propostos; declarações não representam código de produção. Campos numéricos de domínio são finitos e validados, mantidos na precisão de origem. `null` significa indisponível, nunca zero.
 
 ```ts

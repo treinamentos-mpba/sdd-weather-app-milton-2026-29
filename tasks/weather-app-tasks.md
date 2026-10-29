@@ -746,6 +746,8 @@ As tarefas T-100 a T-103 são dedicadas exclusivamente a testes, sem mudanças e
 
 ### T-103 — Testar componentes em loading, erro e vazio
 
+Hardening incremental de T-43/T-45/T-54: validar `aria-busy` independente na busca e nos dados meteorológicos, mantendo anúncios de loading fora das áreas ocupadas, foco estável e edição/unidade disponíveis. Hover é exclusivo de controles habilitados; retry bloqueado expõe descrição acessível. Não mover foco por chegada de resultados.
+
 - **ID:** T-103
 - **Tipo:** Test
 - **Descrição:** Consolidar testes de apresentação isolada com Testing Library e user-event.

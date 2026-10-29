@@ -102,6 +102,8 @@ describe('App integrado', () => {
     expect(screen.queryByText(/dados fictícios/i)).not.toBeInTheDocument();
     const input = screen.getByRole('textbox', { name: 'Nome da cidade' });
     await user.type(input, 'Salvador{Enter}');
+    expect(screen.getByRole('search')).toHaveAttribute('aria-busy', 'true');
+    expect(input).toBeEnabled();
     expect(screen.getByRole('status')).toHaveTextContent('Buscando cidades');
     expect(input).toHaveFocus();
     await act(async () => {
@@ -110,14 +112,24 @@ describe('App integrado', () => {
     });
     expect(input).toHaveFocus();
     expect(fetchWeather).not.toHaveBeenCalled();
+    expect(screen.getByRole('search')).toHaveAttribute('aria-busy', 'false');
     await user.click(screen.getByRole('button', { name: 'Salvador, Bahia, Brasil' }));
     expect(screen.getByText('Carregando o clima…')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Dados meteorológicos' })).toHaveAttribute(
+      'aria-busy',
+      'true',
+    );
+    expect(screen.getByText('Carregando o clima…').closest('[aria-busy="true"]')).toBeNull();
     await user.click(screen.getByRole('radio', { name: 'Fahrenheit' }));
     await act(async () => {
       forecast.resolve({ ok: true, value: data });
       await forecast.promise;
     });
     expect(screen.getByRole('region', { name: 'Clima em Salvador' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Dados meteorológicos' })).toHaveAttribute(
+      'aria-busy',
+      'false',
+    );
     expect(screen.getAllByRole('article')).toHaveLength(5);
     const main = within(screen.getByRole('main'));
     expect(main.getAllByText(/°F/)).toHaveLength(12);

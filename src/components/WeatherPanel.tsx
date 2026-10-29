@@ -39,30 +39,32 @@ export default function WeatherPanel({
           }
         />
       )}
-      {data && (
-        <>
-          {state.status === 'success' && <p role="status">Clima carregado.</p>}
-          {data.partial && (
-            <p className="rounded-xl border border-white/50 p-4">
-              Dados parcialmente disponíveis. Alguns campos ou seções estão sem dados.
+      <section aria-label="Dados meteorológicos" aria-busy={state.status === 'loading'}>
+        {data && (
+          <>
+            {state.status === 'success' && <p role="status">Clima carregado.</p>}
+            {data.partial && (
+              <p className="rounded-xl border border-white/50 p-4">
+                Dados parcialmente disponíveis. Alguns campos ou seções estão sem dados.
+              </p>
+            )}
+            {!data.timeZone && <p>Fuso indisponível. Horários de conclusão apresentados em UTC.</p>}
+            <p className="text-sm text-white/80">
+              Consulta concluída em{' '}
+              {new Intl.DateTimeFormat('pt-BR', {
+                dateStyle: 'short',
+                timeStyle: 'short',
+                timeZone: data.timeZone ?? 'UTC',
+              }).format(data.completedAtMs)}{' '}
+              ({data.timeZone ?? 'UTC'}).
             </p>
-          )}
-          {!data.timeZone && <p>Fuso indisponível. Horários de conclusão apresentados em UTC.</p>}
-          <p className="text-sm text-white/80">
-            Consulta concluída em{' '}
-            {new Intl.DateTimeFormat('pt-BR', {
-              dateStyle: 'short',
-              timeStyle: 'short',
-              timeZone: data.timeZone ?? 'UTC',
-            }).format(data.completedAtMs)}{' '}
-            ({data.timeZone ?? 'UTC'}).
-          </p>
-          {data.location.kind === 'city' && (
-            <CurrentWeather city={data.location.city} current={data.current} unit={unit} />
-          )}
-          <ForecastList forecast={data.forecast} unit={unit} />
-        </>
-      )}
+            {data.location.kind === 'city' && (
+              <CurrentWeather city={data.location.city} current={data.current} unit={unit} />
+            )}
+            <ForecastList forecast={data.forecast} unit={unit} />
+          </>
+        )}
+      </section>
     </div>
   );
 }

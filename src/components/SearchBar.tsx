@@ -3,9 +3,10 @@ import { type FormEvent, useId, useState } from 'react';
 interface SearchBarProps {
   onSearch: (city: string) => void;
   disabled?: boolean;
+  busy?: boolean;
 }
 
-export default function SearchBar({ onSearch, disabled = false }: SearchBarProps) {
+export default function SearchBar({ onSearch, disabled = false, busy = false }: SearchBarProps) {
   const inputId = useId();
   const errorId = `${inputId}-error`;
   const [city, setCity] = useState('');
@@ -29,6 +30,7 @@ export default function SearchBar({ onSearch, disabled = false }: SearchBarProps
     <form
       role="search"
       aria-label="Buscar cidade"
+      aria-busy={busy}
       onSubmit={handleSubmit}
       className="min-w-0 rounded-2xl border border-white/10 bg-white/5 p-4 font-sans text-white shadow-glass backdrop-blur-md"
     >
@@ -52,7 +54,7 @@ export default function SearchBar({ onSearch, disabled = false }: SearchBarProps
         <button
           type="submit"
           disabled={disabled}
-          className="rounded-xl bg-accent-400 px-5 py-3 font-semibold text-night-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-400 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-xl bg-accent-400 px-5 py-3 font-semibold text-night-900 enabled:hover:bg-accent-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-400 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Buscar
         </button>
