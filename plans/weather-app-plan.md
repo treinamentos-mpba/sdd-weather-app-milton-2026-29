@@ -517,6 +517,14 @@ Atribuir Open-Meteo/CC BY 4.0 e GeoNames e manter aviso de estimativas conforme 
 
 `useWeatherApp`, chamado uma vez por `App`, concentra o estado compartilhado em `useReducer`. `App` distribui dados e ações por props. Componentes mantêm somente detalhes visuais e o texto ainda não enviado da busca; o termo enviado fica em `SearchState` para retry reproduzível. Não usar Context, store externa ou cópias do clima em cada cartão.
 
+Entrega incremental em `hooks/useWeather.ts`: implementa os fluxos independentes
+`search` e `weather` com reducer, ações `search(name)`, `selectCity(city)` e
+`retry()`, deduplicação, cancelamento e bloqueios por serviço. Expõe `data`,
+`cities`, `query` e erros/mensagens separados, sem status global que oculte
+concorrência. Busca exige seleção explícita; retry repete a última operação
+que falhou, se não houve nova operação aceita. Preferências, geolocalização,
+relógio de apresentação e integração com `App` continuam pendentes.
+
 Serviços não guardam estado de tela. `localStorage` contém somente preferências autorizadas; não é fonte de dados meteorológicos. Tokens, controllers e operações pendentes ficam em refs do controlador, sem serialização; reducer contém apenas estado representável e transições puras.
 
 ```ts

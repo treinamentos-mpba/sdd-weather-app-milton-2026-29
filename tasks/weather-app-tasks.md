@@ -330,6 +330,13 @@ Cada ID aparece em uma única fatia; tarefas de fatias anteriores são reutiliza
 
 ## Entrega 4 — Hook e reducer
 
+> Fatia de busca/seleção implementada em `hooks/useWeather.ts`,
+> `hooks/weatherReducer.ts` e `types/state.ts`, com testes em
+> `tests/unit/useWeather.test.ts`. Cobre T-24/T-25 e os fluxos de T-27 a T-33
+> apenas para cidades manuais. Não conclui preferências (T-26), relógio (T-34),
+> geolocalização (T-35) nem integração da UI; nomes prováveis abaixo permanecem
+> referência da arquitetura completa.
+
 ### T-24 — Implementar transições de busca
 
 - **ID:** T-24
