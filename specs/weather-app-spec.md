@@ -4,6 +4,8 @@
 
 **Fonte:** [discovery.md](discovery.md). Esta especificação consolida as decisões confirmadas e os defaults recomendados no discovery, sem acrescentar arquitetura ou código. Pendências não resolvidas estão em **Open Questions**.
 
+**Status:** development-ready para o MVP definido. Os contratos e perfis abaixo são defaults autorizados para encerrar as decisões de desenvolvimento. Isso não significa produto implementado, validado ou autorizado para lançamento comercial. Em divergências com defaults anteriores do discovery, prevalece este detalhamento.
+
 O Weather App é um MVP de treinamento que permite consultar o clima atual e a previsão de hoje e dos quatro dias seguintes para cidades no mundo todo. A experiência é web responsiva, em pt-BR, com dados do Open-Meteo, sem autenticação e sem persistência no servidor.
 
 O produto deve ajudar a interpretar o clima para planejar a rotina e viagens, sem apresentar previsões como garantia das condições futuras.
@@ -29,6 +31,31 @@ As três personas têm a mesma prioridade no MVP. As metas de usabilidade são h
 | RF-07 | Lembrar no navegador a identificação da última cidade selecionada e a unidade de temperatura, sem conta ou persistência no servidor. A identificação compreende nome e contexto regional; coordenadas precisas da geolocalização não são persistidas. Permitir apagar as preferências conforme as regras de exclusão e recuperação de Edge Cases. |
 | RF-08 | Obter dados ao selecionar cidade ou solicitar localização, permitir atualização manual e mostrar sempre data e hora de conclusão da consulta meteorológica bem-sucedida, no fuso da cidade. Mostrar separadamente o horário de referência dos dados atuais quando confiável; acima de 60 minutos, marcar esses dados como desatualizados e, sem referência confiável, como de atualidade desconhecida. Não confundir referência do modelo com medição observada nem com horário da consulta. Não atualizar automaticamente em segundo plano; aplicar as regras de concorrência de Edge Cases. |
 
+### Contrato de produto com o provedor
+
+Verificado em 29/10/2026 na documentação oficial e em uma consulta pública de referência às coordenadas 0,0. A consulta retornou todos os campos abaixo; isso comprova suporte, não cobertura ou disponibilidade garantida em toda localidade.
+
+| Informação | Campo Open-Meteo | Semântica de apresentação |
+|---|---|---|
+| Temperatura e sensação atuais | `current.temperature_2m`, `current.apparent_temperature` | Temperatura a 2 m e sensação térmica estimada, em °C de origem. |
+| Umidade e vento atuais | `current.relative_humidity_2m`, `current.wind_speed_10m` | Umidade relativa em % e vento a 10 m em km/h. |
+| Condição atual e referência temporal | `current.weather_code`, `current.time` | Código WMO e instante de referência do dado atual; não é horário de medição por estação. |
+| Condição diária | `daily.weather_code` | Condição mais severa prevista no dia segundo o provedor, não uma condição constante durante todo o dia. |
+| Extremos de temperatura | `daily.temperature_2m_min`, `daily.temperature_2m_max` | Mínima e máxima previstas no dia local. |
+| Probabilidade diária | `daily.precipitation_probability_max` | Maior probabilidade de precipitação do dia; rotular “Probabilidade máxima de precipitação”, sem apresentar como volume ou probabilidade de chover durante todo o dia. |
+| Umidade diária | `daily.relative_humidity_2m_mean` | Média diária fornecida pelo provedor, não calculada pela aplicação. |
+| Vento diário | `daily.wind_speed_10m_max` | Máxima diária do vento a 10 m, não rajada. |
+
+- Consultar cinco dias, fuso automático da localização, temperaturas de origem em Celsius e vento em km/h. Troca de unidade é apresentação local, sem nova chamada. Uma consulta de previsão deve trazer condições atuais e dados diários juntos.
+- Fixar o início do período pela data local representada na resposta válida. Se a requisição atravessar meia-noite, manter as datas recebidas, sinalizar período anterior quando aplicável e oferecer atualização manual; não deslocar valores para adaptar a resposta ao relógio.
+- Datas diárias são rótulos de calendário local (`YYYY-MM-DD`), não instantes a converter pelo fuso do dispositivo. Referência atual deve ser um instante inequívoco; se recebida sem offset, usar o fuso IANA retornado somente quando a interpretação for única. Referência ambígua segue “Atualidade desconhecida”. Fuso inválido impede apresentar a previsão como período local válido.
+- Cada série diária deve ter o mesmo tamanho que sua coleção de datas e usar sua ordem; `null` representa ausência naquela posição. Tamanho divergente invalida a série. Datas inválidas ou duplicadas invalidam as posições afetadas; datas fora do período são ignoradas. As coordenadas de grade retornadas podem diferir da cidade: a identidade vem da seleção, não de igualdade exata com a grade.
+- Mapear códigos WMO: 0 céu limpo; 1 predominantemente limpo; 2 parcialmente nublado; 3 encoberto; 45/48 nevoeiro; 51/53/55 garoa leve/moderada/intensa; 56/57 garoa congelante leve/intensa; 61/63/65 chuva leve/moderada/intensa; 66/67 chuva congelante leve/intensa; 71/73/75 neve leve/moderada/intensa; 77 grãos de neve; 80/81/82 pancadas de chuva leves/moderadas/violentas; 85/86 pancadas de neve leves/intensas; 95 trovoada; 96/99 trovoada com granizo leve/intenso. Código desconhecido segue EC-14; texto não pode depender do ícone.
+- Geocoding usa `language=pt`, sem filtro de país, até dez resultados. O serviço documenta ausência de resultados para um caractere, correspondência exata para dois e busca normalizada por prefixo a partir de três. Não corrigir grafias automaticamente; resultados podem manter nomes nativos. Qualificadores após vírgula dependem da correspondência do provedor, sem promessa de busca livre por qualquer região.
+- Persistir somente nome e contexto regional disponíveis da cidade manual e unidade `C` ou `F`, sem coordenadas nem identificador adicional. Na restauração, confirmar e pesquisar novamente: exigir seleção explícita do resultado, mesmo que único. Se nada corresponder, permitir nova busca. Sem preferências, iniciar com busca manual, Celsius e nenhuma consulta ou geolocalização automática.
+- Enquanto não houver seção utilizável, não há horário de sucesso novo. Uma resposta parcial utilizável conta como consulta concluída e recebe horário próprio; a idade refere-se apenas às condições atuais. Erros HTTP 4xx, além de 429, não são resultados vazios: informar falha, sem repetir automaticamente.
+- Exibir junto aos dados atribuição com link para [Open-Meteo](https://open-meteo.com/) e [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), informando conversão/arredondamento quando aplicados. Creditar GeoNames na apresentação de localidades, conforme atribuição do catálogo. O aviso de estimativas pode compartilhar esse espaço, sem modal obrigatório.
+
 ## User Stories
 
 | ID | User story | Requisito |
@@ -44,7 +71,7 @@ As três personas têm a mesma prioridade no MVP. As metas de usabilidade são h
 
 ## Acceptance Criteria
 
-Os critérios abaixo seguem Given/When/Then (precondição/ação/resultado), por story e requisito funcional. Usar respostas controladas do provedor, relógio e permissões simulados para tornar os cenários reproduzíveis. Regras ainda pendentes em Open Questions não são assumidas como aprovadas.
+Os critérios abaixo seguem Given/When/Then (precondição/ação/resultado), por story e requisito funcional. Usar respostas controladas do provedor, relógio e permissões simulados para tornar os cenários reproduzíveis. O registro em Open Questions documenta o fechamento das decisões e separa os bloqueios de publicação.
 
 ### US-01 — Buscar e selecionar cidade (RF-01)
 
@@ -180,11 +207,21 @@ Os critérios abaixo seguem Given/When/Then (precondição/ação/resultado), po
 |---|---|
 | RNF-01 — Responsividade | Entre 320 px e 1920 px de largura, manter conteúdo e funcionalidades disponíveis sem rolagem horizontal da página. Verificar os fluxos de busca, consulta, troca de unidade, localização e erro em larguras representativas, incluindo os limites. |
 | RNF-02 — Acessibilidade | Atender WCAG 2.2 nível AA nos fluxos de busca e consulta, incluindo rótulos acessíveis, contraste, foco perceptível e operação por teclado. Anunciar carregamento, resultado vazio e erro a tecnologias assistivas sem depender apenas de cor nem deslocar o foco inesperadamente. Combinar verificação automatizada e manual; automação isolada não demonstra conformidade. |
-| RNF-03 — Desempenho | Em 95% das consultas, apresentar resultado ou erro em até 3 segundos, do envio da busca até sua apresentação visível, mantendo a interface interativa. Perfil móvel aprovado: 10 Mbps e latência de 100 ms em navegador suportado. Medir desktop separadamente. Registrar quantidades e tempos de sucessos e falhas separadamente: erros rápidos não demonstram desempenho do caminho bem-sucedido nem disponibilidade. Protocolo e interpretação da medição permanecem em OQ-07, sem criação de nova meta de taxa de sucesso. |
+| RNF-03 — Desempenho | p95 de até 3 segundos por busca de cidades e por consulta meteorológica, medidos separadamente do acionamento até apresentação completa ou parcial utilizável. Aplicar o protocolo abaixo; erros são medidos em grupo separado, não substituem sucessos. Não incluir espera humana pela escolha da cidade ou permissão de localização. |
 | RNF-04 — Resiliência | Falhas de rede ou do provedor não devem inutilizar a aplicação; informar a falha e oferecer nova tentativa. Não há SLA de produção nem modo offline no MVP. |
 | RNF-05 — Idioma e localização | Interface em pt-BR e datas no fuso da cidade. Temperatura em Celsius inicialmente, respeitando preferência salva; alternância para Fahrenheit. Identificar km/h para vento e % para umidade e probabilidade de precipitação. |
 | RNF-06 — Segurança e privacidade | Sem contas, persistência de servidor ou analytics. Antes da ação explícita de localização, informar o envio das coordenadas ao Open-Meteo; não acessar localização antes da ação. Não persistir coordenadas precisas da geolocalização. |
-| RNF-07 — Compatibilidade | Validar fluxos principais nas versões atuais de Chrome, Edge, Firefox e Safari; registrar as versões efetivamente verificadas no plano de testes. |
+| RNF-07 — Compatibilidade | Validar versões estáveis mais recentes na data de aceite: Chrome, Edge e Firefox no Windows 11; Safari no macOS e iOS; Chrome no Android. Registrar versões exatas, sem exigir suporte retroativo a versões posteriores ao aceite. |
+
+### Protocolo de validação e segurança
+
+- **Performance reproduzível:** build de produção, cache meteorológico vazio, um fluxo por vez. Perfil móvel: Chrome com viewport de 390 × 844 CSS px, rede de 10 Mbps nos dois sentidos, latência adicional de 100 ms e CPU com desaceleração de 4×. Desktop: 1366 × 768, mesma rede e sem desaceleração. Registrar máquina, navegador, versão e ferramenta para permitir repetição.
+- **Amostra e aprovação:** por perfil, 100 buscas e 100 consultas meteorológicas bem-sucedidas usando respostas controladas representativas de dez resultados/cinco dias, com entrega após 500 ms e mesma limitação de rede. Calcular p95 pelo 95º valor em ordem crescente; cada grupo deve ter p95 ≤ 3 s. Separadamente, exercitar falhas HTTP, timeout e respostas parciais pelos cenários EC, registrando latências e quantidade de falhas. Uma consulta real completa por perfil confirma a integração e tem latência registrada, sem atribuir um SLA ao provedor.
+- **Acessibilidade:** fluxos completos por teclado, NVDA com Chrome no Windows e VoiceOver com Safari no iOS. Sem falhas conhecidas dos critérios WCAG 2.2 AA aplicáveis; incluir contraste, zoom de 200%, reflow a 320 CSS px, rótulos, foco e anúncios. Ferramenta automatizada sem violações detectadas complementa, mas não substitui, a inspeção manual. Documentar resultado por critério aplicável.
+- **Responsividade:** verificar 320, 390, 768, 1366 e 1920 CSS px, em estados de sucesso, carregamento, vazio, parcial e erro. Conteúdo textual longo deve quebrar linha; funções não podem depender de hover.
+- **Proteção de dados:** usar HTTPS e somente endpoints oficiais necessários de geocoding e previsão. Não colocar coordenadas do dispositivo em URL de navegação, armazenamento, mensagens de erro, logs da aplicação ou telemetria. O envio na requisição HTTPS ao provedor é necessário; informar também que ele recebe IP e pode registrar coordenadas conforme sua política, com link para os termos. Não prometer ausência de logs do provedor ou da hospedagem.
+- **Conteúdo e dependências:** tratar entrada, preferências e resposta externa como dados não confiáveis; validar tipos e domínios antes da apresentação. Não executar HTML, scripts ou URLs recebidos nesses dados. Sem scripts de analytics, fontes ou recursos externos desnecessários; nenhum segredo deve ser necessário no cliente. Diagnósticos locais podem identificar categoria/status do erro, nunca localização ou termo pesquisado.
+- **Entrega:** executar verificações existentes de lint, build e testes; revisar dependências de produção para vulnerabilidades conhecidas altas/críticas, resolvendo ou bloqueando a publicação até decisão documentada. Não introduzir ferramentas ou camadas só para cumprir o documento.
 
 ## Edge Cases
 
@@ -193,7 +230,7 @@ Os cenários EC abaixo complementam os Acceptance Criteria e também são crité
 ### Regras de comportamento
 
 - **Busca (RF-01):** envio explícito por botão ou Enter, sem consultas por digitação. Remover somente espaços nas extremidades e aceitar termos não vazios, inclusive acentos, hífens, apóstrofos e escrita não latina. Preservar a grafia e enviar/exibir texto como dado, não como instrução ou marcação. Usar até dez resultados na ordem do provedor; não garantir equivalência entre grafias nem selecionar o primeiro automaticamente. Sem contexto suficiente para distinguir resultados, informar a limitação e pedir uma busca mais específica.
-- **Suporte aos campos (RF-02/RF-03):** antes de fechar o plano, verificar disponibilidade e semântica de todos os campos obrigatórios. A política de resposta parcial cobre ausências ocasionais em dados suportados, não ausência estrutural no provedor. Campo estruturalmente indisponível exige decisão explícita de produto e revisão dos requisitos e critérios afetados; não é atendido por “Sem dados”. Não criar agregações sem aprovação.
+- **Suporte aos campos (RF-02/RF-03):** os campos obrigatórios e suas semânticas estão definidos no contrato acima, com suporte verificado. A política de resposta parcial cobre ausências ocasionais, não remoção estrutural futura de um campo pelo provedor. Nesse caso, bloquear a entrega afetada até revisar requisito e critérios, sem considerar “Sem dados” cumprimento definitivo. Não criar agregações adicionais.
 - **Dados parciais (RF-02/RF-03/RF-05):** exibir dados válidos com aviso de resposta parcial e “Sem dados” para campos ausentes, nulos, não finitos ou fora de domínio (porcentagens fora de 0–100 e vento negativo). Zero e temperaturas negativas são válidos. Não inventar valores, dias ou agregações. Uma seção (condições atuais ou previsão) é utilizável quando contém ao menos um campo meteorológico válido, inclusive condição reconhecida, seguramente associado ao local e ao período correspondente. Local e horários isoladamente não contam como dados meteorológicos. Se apenas uma seção tiver dados utilizáveis, preservá-la e sinalizar indisponibilidade da outra; na previsão, manter as cinco datas esperadas com ausências marcadas. Sem dados utilizáveis nas duas seções, informar falha da consulta.
 - **Datas e unidades (RF-03/RF-04):** associar valores às datas somente quando o contrato verificado ou uma identificação explícita permitir associação inequívoca. Uma coleção de valores mais curta não revela, por si só, a posição da ausência; quando ambígua, invalidar somente a série afetada, sem deslocar índices nem descartar outras séries válidas. Mostrar as cinco datas esperadas, marcando ausência de previsão sem inventá-la. Usar o calendário/fuso da cidade, não uma sequência de períodos fixos de 24 horas. Converter temperaturas a partir dos valores de origem, nunca de valores já arredondados. Exibir números com até uma casa decimal, arredondando ao mais próximo; em empate, afastar de zero; não exibir zero negativo.
 - **Mudança de dia (RF-03/RF-08):** se a data mudar no fuso da cidade com a tela aberta, manter datas absolutas e dados do período carregado. Não identificar o dia anterior como “hoje”; informar que o período pertence à consulta anterior e oferecer atualização manual. Somente uma nova consulta redefine o período para o novo hoje e os quatro dias seguintes.
@@ -247,11 +284,16 @@ Os cenários EC abaixo complementam os Acceptance Criteria e também são crité
 | EC-37 — RF-07 | Preferências salvas e falha controlada ao removê-las. | A pessoa aciona apagar preferências. | Informar que a exclusão não foi concluída e permitir tentar novamente, sem afirmar sucesso ou prometer ausência de restauração na próxima abertura. |
 | EC-38 — RF-07 | Preferências apagadas com sucesso e nenhuma escolha posterior de cidade. | A pessoa escolhe Fahrenheit e depois reabre a aplicação. | Salvar e restaurar somente a unidade escolhida; não recriar a cidade anteriormente apagada. |
 | EC-39 — RF-05 | HTTP 429 com `Retry-After` contendo data HTTP anterior ao relógio controlado. | A resposta chega. | Informar limite temporário sem criar espera adicional; permitir nova tentativa manual, sem chamada automática. |
+| EC-40 — RF-03 | Dia de referência com `precipitation_probability_max=70`, `relative_humidity_2m_mean=65` e `wind_speed_10m_max=20`. | A previsão é apresentada. | Identificar probabilidade máxima de precipitação de 70%, umidade média de 65% e vento máximo de 20 km/h, sem rotular vento como rajada ou probabilidade como volume. |
+| EC-41 — RF-02/RF-03 | Dados meteorológicos exibidos em Celsius e depois Fahrenheit. | A pessoa consulta a atribuição junto aos dados. | Encontrar links acessíveis para Open-Meteo e CC BY 4.0, aviso de estimativas e indicação de conversão/arredondamento aplicados; nenhuma atribuição implica endosso do provedor. |
+| EC-42 — RF-01/RF-07 | Nome/contexto de uma cidade e unidade salvos, sem confirmação nesta visita. | A aplicação abre e depois a pessoa confirma a cidade lembrada. | Antes de confirmar, nenhuma chamada é feita. Depois, iniciar geocoding e exigir seleção explícita do resultado, mesmo se único, antes da previsão. Sem resultados, permitir nova busca. |
+| EC-43 — RF-03 | Resposta com datas duplicadas, data inválida ou fuso não reconhecido. | A resposta é processada em cada caso. | Invalidar posições com datas duplicadas/inválidas, preservando somente associações inequívocas. Sem fuso válido, informar indisponibilidade da previsão local, sem adotar silenciosamente o fuso do dispositivo. |
+| EC-44 — RF-04 | Dados carregados e tráfego de rede observado. | A pessoa alterna Celsius/Fahrenheit. | Converter os valores de origem conforme a regra de arredondamento e atualizar rótulos sem nova requisição meteorológica. |
 
 ## Assumptions
 
 - O escopo é um MVP de treinamento, não um serviço de produção com suporte ou disponibilidade contratada.
-- Open-Meteo é a fonte definida, sem API key. Disponibilidade dos campos e adequação dos termos ao uso devem ser verificadas; não se presume uso ilimitado ou permissão comercial.
+- Open-Meteo é a fonte definida, sem API key, para treinamento não comercial. Campos foram verificados; termos não garantem disponibilidade ou cobertura e devem ser reconferidos no lançamento.
 - Cobertura global significa permitir busca nas localidades cobertas pelo provedor, não garantir dados para toda localidade existente.
 - Os defaults do discovery são a base do MVP: atualização manual, ausência de cache offline e analytics, unidades métricas adicionais e navegadores evergreen.
 - Dados atuais e previsão são estimativas do provedor, não garantias meteorológicas nem orientação para decisões de segurança.
@@ -266,7 +308,7 @@ As probabilidades são avaliações qualitativas do discovery, não estimativas 
 | Risco | Probabilidade | Impacto | Mitigação |
 |---|---|---|---|
 | Indisponibilidade, limite ou mudança do provedor | Média | Alto: ausência de dados e necessidade de rever integração. | Informar falhas, permitir nova tentativa, evitar requisições desnecessárias e verificar termos e limites antes da publicação. |
-| Campos exigidos não disponíveis ou com semântica diferente | Média | Alto: retrabalho nos requisitos e apresentação. | Verificar todos os campos atuais e diários antes de fechar o plano; resolver OQ-02 sem inventar agregações nem aceitar ausência estrutural como cumprimento do requisito. |
+| Mudança futura de campos ou semântica do provedor | Média | Alto: retrabalho nos requisitos e apresentação. | Usar o contrato verificado, testar respostas de referência e bloquear entrega afetada por remoção estrutural, sem inventar agregações ou aceitar ausência permanente como cumprimento. |
 | Dados desatualizados apresentados como atuais | Média | Alto: decisões baseadas em informações antigas. | Distinguir conclusão da consulta de referência dos dados atuais; aplicar aviso acima de 60 minutos ou de atualidade desconhecida e sinalizar falhas de atualização. |
 | Cidade homônima ou localização incorreta | Média | Alto: previsão do local errado. | Mostrar contexto regional, exigir seleção e validar identidade da cidade consultada. |
 | Personas e métricas ainda não validadas | Média | Alto: retrabalho e valor do produto incerto. | Validar tarefas das três personas com usuários antes de ampliar o escopo. |
@@ -292,15 +334,38 @@ As probabilidades são avaliações qualitativas do discovery, não estimativas 
 
 ## Open Questions
 
-As questões abaixo não impedem usar este documento como base de discussão, mas impedem considerar fechados os comportamentos ou critérios afetados. Os IDs são preservados para rastreabilidade; OQ-01 e OQ-03 a OQ-06 foram resolvidas pelas regras e cenários de Edge Cases. Os limites de 10 segundos e 60 minutos foram confirmados pelo usuário; os demais comportamentos incorporam as recomendações autorizadas para o MVP.
+**Pergunta de prontidão: “esta spec é suficiente para desenvolver sem novas perguntas?”**
 
-| ID | Pergunta e alternativas a decidir | Impacto e momento de resolução |
-|---|---|---|
-| OQ-02 | O provedor oferece todos os campos atuais e diários com a semântica exigida? Qual agregação representa a probabilidade diária e qual o significado do horário de referência dos dados atuais? | Verificar antes de fechar o plano e o contrato de dados. Ausência estrutural de campo exige decisão explícita de produto e revisão dos requisitos/critérios; não é atendida por “Sem dados”. Respostas parciais cobrem somente ausências ocasionais. Não criar agregações sem aprovação. |
-| OQ-07 | Qual dispositivo, perfil de processamento, amostra e conjunto de consultas serão usados para medir desempenho? A métrica engloba busca de cidade, previsão ou o fluxo completo? Como avaliar tempos de sucesso e erro separadamente e registrar desktop? | O perfil de rede foi aprovado, mas esses detalhes faltam para uma medição reproduzível. Fechar protocolo e interpretação no plano de validação antes de avaliar RNF-03, sem inferir disponibilidade a partir de erros rápidos nem acrescentar meta de sucesso não aprovada. |
-| OQ-08 | Quais versões e sistemas operacionais compõem a matriz de navegadores e quais tecnologias assistivas serão usadas na validação manual? | Necessário para verificar RNF-02/RNF-07. Registrar no plano de testes. |
-| OQ-09 | Quais são os termos atuais do Open-Meteo, atribuição exigida, limites e permissão para o contexto de publicação? | Pode alterar integração ou viabilidade da publicação. Confirmar antes de publicar; não presumir uso comercial gratuito. |
-| OQ-10 | Antes de produção, quem responde por hospedagem, monitoramento, suporte, logs operacionais e eventual disponibilidade contratada? | O MVP não tem SLA; definir responsabilidades e tratamento de dados operacionais antes de lançamento para usuários reais. |
+**Resposta: sim, development-ready para o MVP não comercial definido.** Requisitos, dados, comportamento de exceção e protocolos de aceite estão especificados; arquitetura e decomposição de trabalho seguem para Plan e Tasks antes do código. Não há pergunta de produto bloqueando o desenvolvimento desse escopo. A conformidade da implementação ainda deverá ser demonstrada.
+
+### Registro de fechamento
+
+| IDs originais | Resolução |
+|---|---|
+| OQ-01, OQ-03 a OQ-06 | Resolvidas pelas regras e cenários de Edge Cases e contrato de produto. Limites de 10 segundos e 60 minutos confirmados pelo usuário. |
+| OQ-02 | Campos atuais e diários suportados na consulta de referência; probabilidade diária é máxima; referência atual é dado de modelo com resolução temporal de 15 minutos, não observação de estação nem instante de consulta. Sem agregações locais. |
+| OQ-07 | Protocolo de validação definido em Non-Functional Requirements, com perfis, amostragem, métricas e separação entre sucesso e falha. |
+| OQ-08 | Matriz de navegador/sistema e validação assistiva definidas nos RNFs; registrar versões executadas no aceite. |
+| OQ-09 | API gratuita restrita a uso não comercial; dados sob CC BY 4.0 com atribuição. Termos consultados indicam menos de 10.000 chamadas/dia, 5.000/hora e 600/minuto, sujeitos a mudança. Sem promessa de quota individual garantida. |
+| OQ-10 | Operação de produção fora do MVP, conforme decisão do usuário; transferência para o checklist de publicação, não requisito implícito para desenvolver. |
+
+### Checklist separado de publicação
+
+Não é uma declaração de prontidão operacional. Antes de disponibilizar para usuários reais:
+
+- [ ] Revalidar uso não comercial, limites, atribuição e política de privacidade do provedor. Uso comercial ou necessidade de chave exige revisão do escopo e solução para segredos; nunca inserir chave no cliente.
+- [ ] Definir responsável por publicação, suporte e incidentes, hospedagem HTTPS, rollback e monitoramento sintético sem localização pessoal. Não anunciar SLA sem aprovação explícita.
+- [ ] Documentar retenção/acesso dos logs da hospedagem e informar os destinatários externos dos dados. Os termos consultados do Open-Meteo indicam logs que podem conter coordenadas por até 90 dias; a aplicação não pode prometer sua exclusão.
+- [ ] Demonstrar aceite dos RFs, cenários EC, performance, acessibilidade e compatibilidade; registrar versões, evidências e limitações conhecidas.
+- [ ] Configurar e verificar CSP restrita aos recursos/endpoints necessários, proibição de enquadramento por terceiros, política de referenciador sem envio da URL da aplicação e permissão de geolocalização restrita à própria origem. Sem conteúdo misto nem exposição de dados pessoais em diagnósticos.
+- [ ] Concluir verificações de dependências e revisar mudanças que afetem o contrato do provedor; publicação bloqueada por falhas de segurança ou critérios de aceite não atendidos.
+
+### Fontes oficiais verificadas em 29/10/2026
+
+- [Forecast API](https://open-meteo.com/en/docs): variáveis atuais/diárias, condições baseadas em modelo e códigos WMO.
+- [Geocoding API](https://open-meteo.com/en/docs/geocoding-api): correspondência, tradução e campos de localização.
+- [Termos e privacidade](https://open-meteo.com/en/terms): uso gratuito não comercial, limites e logs do provedor.
+- [Licença](https://open-meteo.com/en/licence): atribuição e CC BY 4.0.
 
 ### Referências de relatos da comunidade
 
